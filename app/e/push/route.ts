@@ -1,8 +1,11 @@
 // POST /e/push — scheduled batch push to Reach + retention maintenance.
 // STUB — no implementation until Build Plan Phase 1.
 // REPLACES GET /e/export: Phase 0c closed Aug 1 2026 — Reach cannot run a
-// scheduled pull, so we push. Receiving endpoint + batch payload shape still
-// need sign-off from the Reach ETL owner (the remaining half of 0c).
+// scheduled pull, so we push. Contract fully closed same day: payload is ours
+// to define, Reach does all ETL. Batches POST to the existing
+// REACH_WEBHOOK_URL with source: "identity_endpoint_history" so the
+// normalizer routes them apart from form events. Coordinate the Reach ETL
+// mapping at Phase 4 entry.
 //
 // Trigger: Webflow Cloud documents no cron/scheduled-handler support
 // (verify at Phase 1 by trying triggers.crons in wrangler.jsonc; assume

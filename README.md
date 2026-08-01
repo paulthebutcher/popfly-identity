@@ -2,7 +2,7 @@
 
 First-party visitor identity, attribution, and event delivery for popfly.com. Runs as a Webflow Cloud app mounted at `popfly.com/e`, so everything is same-origin — no third-party endpoints for ad blockers to match, no ITP storage caps to fight, no client-exposed API keys.
 
-**Status: pre-build.** The repo is a documented scaffold — every `.ts` and `.sql` file is a comment-only stub describing what goes there. No implementation exists yet. Phase 0 verification gates as of Aug 1 2026: 0a (D1 limits) closed — storage, not write rate, is the constraint; 0b closed client-side — RB2B's `_reb2buid` is a readable hard key; 0c closed as **push** (Reach can't pull). Open: 0e, the 0c batch contract, and confirming `_reb2buid` appears on RB2B's outbound side. See [BUILD_PLAN.md](BUILD_PLAN.md) Phase 0.
+**Status: pre-build.** The repo is a documented scaffold — every `.ts` and `.sql` file is a comment-only stub describing what goes there. No implementation exists yet. Phase 0 verification gates as of Aug 1 2026: 0a (D1 limits), 0c (read path = push), and 0e (Reach contract — ours to define, Reach owns all ETL) are closed; 0b closed client-side (RB2B's `_reb2buid` is a readable hard key). Remaining: confirm `_reb2buid` appears on RB2B's outbound side (join quality only, not a blocker), and test whether Webflow Cloud honors cron triggers at Phase 1. **Nothing blocks Phase 1.** See [BUILD_PLAN.md](BUILD_PLAN.md) Phase 0.
 
 **Source of truth:** [docs/spec-v3.2.html](docs/spec-v3.2.html) (Build Spec v3.2, Jul 31 2026). Where this README and the spec disagree, the spec wins. Decisions and their status live in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -124,7 +124,7 @@ The intended flow, per Webflow Cloud's docs at time of writing — exact command
 ### Related systems (not in this repo)
 
 - **Head script v2.2** — lives in the Webflow site's custom code. Five edits over v2.1, spec §5.
-- **Reach** — receives form events in real time (`/e/collect` forward) and touch/pageview history in nightly batches (`/e/push`); it cannot run scheduled pulls (Phase 0c, closed Aug 1 2026). Batch endpoint + payload shape still need Reach ETL owner sign-off. Owns all ETL and the reporting in spec §6.
+- **Reach** — receives form events in real time (`/e/collect` forward) and touch/pageview history in nightly batches (`/e/push`, `source: "identity_endpoint_history"` envelope to the same webhook URL); it cannot run scheduled pulls. The payload contract is ours to define — Reach owns all ETL and the reporting in spec §6; coordinate the ETL mapping before dual-write (Phase 4).
 - **RB2B** — stays a direct webhook to Reach for lead delivery; contributes `rb2b_id` to `/e/v` for joining *if* a readable client-side ID exists (Phase 0b).
 - **GrowSurf, GTM** — unchanged.
 - **n8n form workflow** — deleted at cutover.
