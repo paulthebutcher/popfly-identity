@@ -1,0 +1,11 @@
+# Local dev secrets template — copy to .dev.vars (gitignored) and fill in.
+# Production values live ONLY in the Webflow Cloud dashboard (runtime-injected,
+# referenced only inside route handlers). Never commit real values.
+
+REACH_WEBHOOK_URL=
+# Secret. The ROTATED key — never the current public key (retired at Phase 7).
+REACH_WEBHOOK_KEY=
+# Secret. Dead-letter alerting.
+ALERT_WEBHOOK_URL=
+# Secret. Bearer token for GET /e/export.
+EXPORT_KEY=

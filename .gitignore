@@ -1,0 +1,16 @@
+# dependencies / build output (populated once Phase 1 scaffolding lands)
+node_modules/
+.next/
+.open-next/
+.wrangler/
+dist/
+
+# local secrets — production values live in the Webflow Cloud dashboard only
+.dev.vars
+.env
+.env.*
+!.dev.vars.example
+
+# OS / editor
+.DS_Store
+*.log

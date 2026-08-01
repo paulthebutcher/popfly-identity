@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Popfly Identity Server — Build Spec v3.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0c0e10; --panel:#12161a; --panel2:#171c21; --line:#232a30;
+    --ink:#e9edeb; --muted:#9aa5a0; --faint:#6b756f;
+    --green:#2ea15a; --green-soft:rgba(46,161,90,.14);
+    --amber:#d9a441; --amber-soft:rgba(217,164,65,.12);
+    --blue:#5b9bd4; --blue-soft:rgba(91,155,212,.12);
+    --rose:#c9736b; --rose-soft:rgba(201,115,107,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{background:var(--bg);color:var(--ink);font:400 16px/1.65 'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:880px;margin:0 auto;padding:0 28px 120px}
+
+  /* Masthead */
+  header{padding:72px 0 40px;border-bottom:1px solid var(--line)}
+  .eyebrow{font:500 12px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:18px}
+  h1{font:600 clamp(34px,5vw,52px)/1.08 'Fraunces',serif;letter-spacing:-.01em;margin-bottom:14px}
+  h1 em{font-style:normal;color:var(--green)}
+  .sub{color:var(--muted);max-width:56ch;font-size:17px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+  .meta span{font:500 12px/1 'JetBrains Mono',monospace;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:8px 14px}
+  .meta span b{color:var(--ink);font-weight:500}
+
+  /* Status legend — the spec's epistemic spine */
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin:28px 0 0;padding:18px 20px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+  .legend p{font-size:13px;color:var(--faint);width:100%;margin-bottom:2px}
+  .tag{display:inline-flex;align-items:center;gap:6px;font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;border-radius:5px;padding:5px 9px;white-space:nowrap}
+  .tag::before{content:"";width:6px;height:6px;border-radius:50%}
+  .t-obs{color:var(--green);background:var(--green-soft)} .t-obs::before{background:var(--green)}
+  .t-inf{color:var(--blue);background:var(--blue-soft)} .t-inf::before{background:var(--blue)}
+  .t-asm{color:var(--amber);background:var(--amber-soft)} .t-asm::before{background:var(--amber)}
+  .t-dec{color:var(--ink);background:var(--panel2);border:1px solid var(--line)} .t-dec::before{background:var(--green)}
+  .t-new{color:var(--rose);background:var(--rose-soft)} .t-new::before{background:var(--rose)}
+
+  /* Sections */
+  section{padding-top:56px}
+  h2{font:600 26px/1.2 'Fraunces',serif;letter-spacing:-.005em;display:flex;align-items:baseline;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+  h2 .no{font:500 13px/1 'JetBrains Mono',monospace;color:var(--faint)}
+  h3{font:600 15px/1.4 'Inter',sans-serif;margin:26px 0 10px;color:var(--ink)}
+  p{color:var(--muted);margin-bottom:12px;max-width:70ch}
+  p b,li b{color:var(--ink);font-weight:600}
+  ul,ol{margin:0 0 14px 20px;color:var(--muted)}
+  li{margin-bottom:8px;max-width:66ch}
+  code{font:500 13px 'JetBrains Mono',monospace;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:2px 6px;white-space:nowrap}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px;overflow-x:auto;margin:16px 0 20px}
+  pre code{background:none;border:none;padding:0;white-space:pre;font-size:13px;line-height:1.7;color:var(--muted)}
+  pre code .hl{color:var(--green)}
+  pre code .k{color:var(--blue)}
+  pre code .n{color:var(--rose)}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin:16px 0}
+  .card h3{margin-top:0}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0 20px;font-size:14px}
+  th{font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:top}
+  td:first-child{color:var(--ink)}
+  table.nw td:first-child{white-space:nowrap}
+  tr:last-child td{border-bottom:none}
+  .yes{color:var(--green);font-weight:600}
+  .part{color:var(--amber);font-weight:600}
+  .no-{color:var(--rose);font-weight:600}
+
+  .callout{border-left:3px solid var(--green);background:var(--green-soft);border-radius:0 10px 10px 0;padding:16px 20px;margin:18px 0}
+  .callout.warn{border-color:var(--amber);background:var(--amber-soft)}
+  .callout.stop{border-color:var(--rose);background:var(--rose-soft)}
+  .callout p{margin:0;color:var(--ink);font-size:15px}
+  .callout p+p{margin-top:8px}
+
+  .decisions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+  .dec{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .dec .q{font:500 11px/1 'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .dec .a{font-size:14px;color:var(--ink);line-height:1.5}
+  .dec .a .ok{color:var(--green);font-weight:700;margin-right:4px}
+  .dec .a .re{color:var(--rose);font-weight:700;margin-right:4px}
+  @media(max-width:640px){.decisions{grid-template-columns:1fr}}
+
+  .changelog{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:20px 24px;margin:24px 0 0}
+  .changelog h3{margin-top:0}
+  .changelog ol{margin-bottom:0}
+
+  footer{margin-top:80px;padding-top:24px;border-top:1px solid var(--line);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;font:500 12px 'JetBrains Mono',monospace;color:var(--faint)}
+  a{color:var(--green);text-decoration:none}
+  :focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Popfly · Marketing Infrastructure</div>
+  <h1>Identity Server <em>→ Reach</em>, direct.</h1>
+  <p class="sub">A first-party endpoint on the site's own origin that issues durable visitor identity, logs every attribution touch and every pageview, classifies each touch to a channel, and delivers validated form events straight to Reach. n8n leaves the form path. Reach owns all ETL.</p>
+  <div class="meta">
+    <span>SPEC <b>v3.2</b></span><span>STATUS <b>Build-ready · two decisions reopened</b></span><span>HOST <b>Webflow Cloud @ /e</b></span><span>DATE <b>Jul 31, 2026</b></span>
+  </div>
+  <div class="legend">
+    <p>Every claim in this spec carries its epistemic status:</p>
+    <span class="tag t-obs">Observed — confirmed in code, data, or docs</span>
+    <span class="tag t-inf">Inferred — reasoned from evidence</span>
+    <span class="tag t-asm">Assumed — verify before relying on it</span>
+    <span class="tag t-dec">Decided ✓</span>
+    <span class="tag t-new">New in v3.2</span>
+  </div>
+
+  <div class="changelog">
+    <h3>What changed from v3.1</h3>
+    <ol>
+      <li><b>Pageviews are now in scope.</b> New <code>pageviews</code> table. <code>touches</code> stays an attribution log; the two are separate on purpose.</li>
+      <li><b>Touches are now classified to a channel at write time.</b> v3.1 stored raw params and pushed the taxonomy onto the Reach ETL owner. It now ships with the data, versioned.</li>
+      <li><b>A read path exists.</b> v3.1 had no way to get touch history out of D1 except on form submit, which excluded every visitor who never converted. That was the largest architectural gap.</li>
+      <li><b>RB2B moved from "out of scope" to a join dependency.</b> RB2B will never supply UTM data (see §3), so this touch log is the only channel source for RB2B-identified people.</li>
+      <li>Session derivation moved server-side; bot gate added to <code>/e/v</code>; owned-domain suppression; cookie scope decided.</li>
+      <li>New §6 documents the metrics this unlocks and, more importantly, the four it does not.</li>
+    </ol>
+  </div>
+</header>
+
+<section id="system">
+  <h2><span class="no">§1</span>System after cutover</h2>
+<pre><code>www.popfly.com  (Webflow site · Business plan)
+│
+├─ &lt;head&gt;: attribution script v2.2
+│    load:    <span class="hl">POST /e/v</span>        → identify + touch + pageview: mints/reads pf_vid
+│                                cookie, classifies channel, writes D1, returns IDs
+│    submit:  <span class="hl">POST /e/collect</span>  → payload + server-attached touch history
+│    (native Webflow submission continues → email notification only)
+│
+└─ popfly.com/e  (Webflow Cloud app · Next.js route handlers · GitHub auto-deploy)
+     validate → merge identity → classify → enrich → forward
+        └─► POST ops.popfly.com/marketing/api/webhook/events?key=<span class="k">&lt;ROTATED_KEY&gt;</span>
+             retries ×3 backoff → terminal failure → D1 dead_letters + alert
+     <span class="n">└─► GET /e/export</span>  → auth'd, date-ranged, cursor-paginated read path
+             Reach pulls touch + pageview history for non-converters</code></pre>
+  <p><b>Deleted at cutover:</b> Webflow→n8n webhook, n8n form workflow, old Reach key in WEBHOOK_SOURCE.<br>
+  <b>Unchanged:</b> GrowSurf SDK, GTM.<br>
+  <b>Changed from v3.1:</b> RB2B stays a direct webhook to Reach, but now also contributes an <code>rb2b_id</code> to <code>/e/v</code> for joining. See §3 and §9.</p>
+</section>
+
+<section id="fixes">
+  <h2><span class="no">§2</span>What it fixes</h2>
+  <table>
+    <tr><th>Problem</th><th>Fixed?</th><th>How</th></tr>
+    <tr><td>Reach key exposed client-side (fake-lead injection)</td><td class="yes">Yes</td><td>Key lives in a secret env var, accessed only in route handlers; key rotated at cutover, old key retired</td></tr>
+    <tr><td>Safari 7-day cap on JS-set storage</td><td class="yes">Yes, fully</td><td>Server-set HttpOnly cookie from the first-party origin itself — outside ITP's script-storage caps; no CNAME or third-party-IP heuristics to trip</td></tr>
+    <tr><td>Multi-session journeys lose entry attribution</td><td class="yes">Yes</td><td>Server-side touch log keyed to the durable cookie ID — survives localStorage clears and Safari thinning</td></tr>
+    <tr><td>Ad blockers pattern-matching third-party endpoints</td><td class="yes">Yes</td><td>Same-origin path; nothing to match</td></tr>
+    <tr><td>No validation, retry, idempotency, or visibility</td><td class="yes">Yes</td><td>Schema validation, ×3 retry with backoff, event_id dedupe handle, dead-letter table + alerting</td></tr>
+    <tr><td>Anyone can inject leads into Reach</td><td class="yes">Yes</td><td>Origin checks + honeypot + rate limit + server-held key</td></tr>
+    <tr><td><span class="tag t-new">New</span> No pageview data outside RB2B's 5–20% identified slice</td><td class="yes">Yes</td><td><code>pageviews</code> table written on the <code>/e/v</code> call that already fires every pageload — zero additional HTTP requests</td></tr>
+    <tr><td><span class="tag t-new">New</span> Paid and organic Google indistinguishable</td><td class="yes">Yes</td><td><code>gclid</code> / <code>gad_source</code> checked <em>before</em> UTM fallback, so auto-tagged paid clicks never fall into <code>direct</code></td></tr>
+    <tr><td><span class="tag t-new">New</span> No channel on any touch</td><td class="yes">Yes</td><td>Classified at write time into 12 buckets, <code>rules_version</code> stamped for reclassification</td></tr>
+    <tr><td><span class="tag t-new">New</span> Non-converting visitors' history trapped in D1</td><td class="yes">Yes</td><td><code>GET /e/export</code> read path</td></tr>
+    <tr><td><span class="tag t-new">New</span> Campaign-tagging failures hide inside <code>direct</code></td><td class="yes">Yes</td><td><code>unknown</code> kept as a distinct bucket from <code>direct</code>; rising <code>unknown</code> count is the data-quality alarm</td></tr>
+    <tr><td>Cross-device journeys</td><td class="no-">No</td><td>Cookie is per-browser. Stitched retroactively only when the same email converts on both. Accepted limitation.</td></tr>
+    <tr><td>Impression / view-through attribution</td><td class="no-">No</td><td>Click-based only. Out of scope permanently.</td></tr>
+  </table>
+</section>
+
+<section id="current">
+  <h2><span class="no">§3</span>Current state this builds on</h2>
+  <ul>
+    <li><span class="tag t-obs">Observed</span> &nbsp;<b>Head script (deployed):</b> <code>visitor_id</code> in localStorage, session ID in sessionStorage, first-touch object with sessionStorage migration shim, <code>grsf</code> cookie for GrowSurf, <code>window.PopflyTracking.getFormValues()</code> interface, hidden-field population on load + capture-phase submit, <code>?debug=pf</code> flag. First-touch only.</li>
+    <li><span class="tag t-obs">Observed</span> &nbsp;<b>Footer script:</b> deleted — was overwriting UTM fields from stale sessionStorage keys.</li>
+    <li><span class="tag t-obs">Observed</span> &nbsp;<b>Form:</b> one Webflow form at <code>popfly.com/start/new</code>; hidden fields match getFormValues() names.</li>
+    <li><span class="tag t-obs">Observed</span> &nbsp;<b>RB2B will never supply channel data.</b> Their KB article <em>Access to UTM Parameters and Other Identifiers</em> (updated Dec 10, 2025) states RB2B intentionally limits UTM display in the dashboard, CSV exports, and most integrations, and surfaces it only through the HubSpot and Salesforce CRM integrations. The webhook payload is fixed and contains no UTM fields. <code>api.rb2b.com</code> is an identity-resolution product (IP→HEM, email→LinkedIn), not a feed of your own visitors. <b>Consequence: this touch log is the sole channel source for RB2B-identified people.</b></li>
+    <li><span class="tag t-obs">Observed</span> &nbsp;<b>Referrer values seen in production</b> (RB2B daily export, 479 profiles): google.com, l.threads.com, bing.com, facebook.com, duckduckgo.com, linkedin.com, instagram.com, search.yahoo.com, chatgpt.com, substack.com, <code>android-app://com.google.android.gm</code>, <code>android-app://com.linkedin.android</code>, and — critically — <code>guide.popfly.com</code> and <code>app.popfly.com</code>. The classifier must handle the <code>android-app://</code> scheme and must suppress owned domains.</li>
+    <li><span class="tag t-obs">Observed</span> &nbsp;<b>Zero query strings survive in RB2B's export.</b> All 675 page-URL entries are bare paths. This is RB2B's export behavior, not a Popfly tagging failure, and it is why the <code>unknown</code>/<code>direct</code> split has to be built here.</li>
+    <li><span class="tag t-asm">Assumed</span> &nbsp;<b>Reach ingestion (April spec):</b> POST with <code>?key=</code> validated against WEBHOOK_SOURCE; <code>email</code> required; normalizer sets eventType. Confirm unchanged before dual-write.</li>
+    <li><span class="tag t-asm">Assumed</span> &nbsp;<b>Volume:</b> ~20k form events/mo ceiling. <b>Pageview volume is unknown and materially larger.</b> RB2B logged 675 pageviews across its identified slice at a stated 5–20% resolution rate, implying total pageviews of a different order. Business plan allows 2M Cloud requests/mo, which is ample; <b>D1 write limits under Webflow Cloud's allocation are the binding constraint and are unverified.</b> See §9.</li>
+  </ul>
+</section>
+
+<section id="app">
+  <h2><span class="no">§4</span>The app</h2>
+  <p><b>Stack:</b> Next.js App Router, route handlers only (no pages), OpenNext/Workers runtime. Repo in Popfly's GitHub org. Mount path <code>/e</code> — confirmed free; Cloud routes override site pages.</p>
+<pre><code>popfly-identity/
+  app/e/v/route.ts          <span class="k"># POST — identify + touch + pageview</span>
+  app/e/collect/route.ts    <span class="k"># POST — event ingest</span>
+  app/e/export/route.ts     <span class="n"># GET  — auth'd read path for Reach</span>
+  app/e/healthz/route.ts    <span class="k"># GET  — uptime</span>
+  lib/validate.ts           <span class="k"># schema + bot checks</span>
+  lib/classify.ts           <span class="n"># channel classifier + RULES_VERSION</span>
+  lib/session.ts            <span class="n"># server-side session derivation</span>
+  lib/reach.ts              <span class="k"># forwarder w/ retry</span>
+  lib/db.ts                 <span class="k"># D1 access (getCloudflareContext)</span>
+  migrations/001_init.sql
+  wrangler.jsonc · webflow.json</code></pre>
+  <p><b>Env vars</b> (Webflow Cloud dashboard; runtime-injected — never referenced outside handlers <span class="tag t-obs">Observed</span>): <code>REACH_WEBHOOK_URL</code>, <code>REACH_WEBHOOK_KEY</code> <em>(secret, rotated — never the current public key)</em>, <code>ALERT_WEBHOOK_URL</code> <em>(secret)</em>, <code>EXPORT_KEY</code> <em>(secret, new in v3.2)</em>.</p>
+
+  <div class="card">
+    <h3>POST /e/v — identify + touch + pageview, one roundtrip per pageload</h3>
+    <p>Body from script: <code>{ url, referrer, session_hint, params, rb2b_id? }</code></p>
+    <ol>
+      <li><b>Bot gate <span class="tag t-new">New</span>:</b> UA check against a known-crawler list. <b>Flag, never drop</b> — sets <code>is_bot</code> on both rows. Same principle as <code>/e/collect</code>. AdsBot-Google-Mobile and preview fetchers otherwise mint cookies and pollute channel counts.</li>
+      <li>Read <code>pf_vid</code> cookie; missing → mint <code>v_&lt;uuid&gt;</code>.</li>
+      <li><code>Set-Cookie: pf_vid=…; Domain=.popfly.com; Path=/; Max-Age=34560000; HttpOnly; Secure; SameSite=Lax</code> — reissued every call (rolling 400-day expiry, the Chrome cap). <b><code>Domain</code> is new in v3.2</b> so the ID is readable from <code>app.popfly.com</code> and <code>guide.popfly.com</code> when those surfaces are instrumented later.</li>
+      <li><b>Session derivation, server-side <span class="tag t-new">New</span>:</b> session = last session for this <code>visitor_id</code> if its last event is under 30 minutes old, else mint a new one. The client's sessionStorage value is accepted as a hint only. v3.1 trusted the client, which meant two open tabs produced two sessions and double-counted touches.</li>
+      <li><b>Always write a <code>pageviews</code> row.</b></li>
+      <li><b>Touch decision:</b> classify first (see below). Write a <code>touches</code> row iff channel is not <code>internal</code> <em>and</em> (new session, or attribution param present, or external referrer) <em>and</em> <code>dedup_key</code> is not already present. Plain internal navigation logs a pageview and nothing else — <code>touches</code> stays an attribution log.</li>
+      <li>Return <code>{ visitor_id, session_id }</code>. Same-origin → no CORS. <code>Cache-Control: no-store</code>.</li>
+    </ol>
+    <div class="callout"><p><b>Why the server cookie beats the localStorage ID:</b> HttpOnly and set by the first-party origin, so it sits outside ITP's 7-day script-storage cap and survives localStorage clears. The localStorage ID stays as fallback and continuity for existing visitors.</p>
+    <p><b>Why pageviews are nearly free:</b> the <code>/e/v</code> call already fires on every pageload in v3.1 and the server was discarding the navigation. Adding pageviews costs zero additional HTTP requests. The only new cost is D1 writes.</p></div>
+  </div>
+
+  <div class="card">
+    <h3>Channel classification <span class="tag t-new">New</span></h3>
+    <p>Runs server-side in <code>lib/classify.ts</code>. Ordered, first match wins. Raw <code>params</code> and <code>referrer</code> are always stored unmodified alongside the derived values, so nothing is lossy.</p>
+<pre><code> 1. gclid | gad_source | gad_campaignid   → paid_search      / google
+ 2. msclkid                               → paid_search      / bing
+ 3. li_fat_id                             → paid_social      / linkedin
+ 4. grsf                                  → referral_program / growsurf
+ 5. utm_medium ∈ {cpc,ppc,paid,
+                  paidsocial,display}     → paid_*           / utm_source
+ 6. utm_source or utm_medium present      → map from taxonomy
+ 7. referrer host ∈ SEARCH_ENGINES        → organic_search
+ 8. referrer host ∈ SOCIAL                → organic_social
+ 9. referrer host ∈ AI_SURFACES           → ai_referral
+10. referrer host ∈ OWNED_DOMAINS         → internal  <span class="k">(suppress touch)</span>
+11. referrer present, no match            → referral
+12. no referrer, no params                → direct
+13. else                                  → unknown</code></pre>
+    <div class="callout warn"><p><b>Rule 1 must precede rule 6.</b> With Google Ads auto-tagging on and manual UTMs off, a paid click arrives with <code>gclid</code> and no <code>utm_source</code>. If UTM checks run first, every paid click classifies as <code>direct</code> and the conclusion is that ads do not work.</p>
+    <p><b>Rules 12 and 13 stay separate.</b> <code>direct</code> is a real behavior. <code>unknown</code> is a data gap. Collapsing them hides exactly the bare-landing-page-URL failure class already seen in paid campaigns.</p></div>
+    <h3>Host lists</h3>
+    <ul>
+      <li><b>OWNED_DOMAINS:</b> <code>popfly.com</code>, <code>www.popfly.com</code>, <code>app.popfly.com</code>, <code>guide.popfly.com</code>. All four appear as referrers in production data. Without suppression, a www → app → www bounce logs a spurious touch classified as <code>referral</code>.</li>
+      <li><b>AI_SURFACES:</b> <code>chatgpt.com</code>, <code>perplexity.ai</code>, <code>claude.ai</code>, <code>gemini.google.com</code>, <code>copilot.microsoft.com</code>. Low volume today. Given its own bucket because the trend line is the point and it cannot be backfilled.</li>
+      <li><b>android-app:// scheme:</b> <code>new URL()</code> parses these but <code>.hostname</code> returns the package name. Map explicitly: <code>com.google.android.gm</code> → <code>email</code>, <code>com.linkedin.android</code> → <code>organic_social</code>, <code>com.google.android.googlequicksearchbox</code> → <code>organic_search</code>. A regex expecting <code>https://</code> silently drops all of these into <code>unknown</code>.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>POST /e/collect — event ingest</h3>
+    <ol>
+      <li><b>Gate:</b> same-origin referer/origin check; accepts <code>application/json</code> <em>and</em> <code>text/plain</code> (sendBeacon sends text/plain); body ≤ 32 KB; per-IP token bucket (~10/min).</li>
+      <li><b>Validate:</b> <code>email</code> present and RFC-shaped; allowlisted keys; length caps.</li>
+      <li><b>Bot signals — flag, never drop:</b> honeypot <code>website_url</code>, <code>form_age_ms</code> &lt; 2000, disposable email domain → sets <code>bot_score</code>. Reach ETL decides; no real lead is ever silently eaten.</li>
+      <li><b>Identity merge:</b> cookie <code>pf_vid</code> is authoritative; a divergent client ID rides along as <code>visitor_id_client</code> so Reach can stitch pre-migration history.</li>
+      <li><b>Enrich:</b> <code>received_at</code>, <code>event_id</code> = SHA-256(email + session_id + 60s bucket).</li>
+      <li><b>Attach touch history:</b> full ordered <code>touches</code> array from D1 (cap 50), each row carrying its derived <code>channel</code>, <code>source</code>, <code>campaign</code>, and <code>touch_index</code>. Flat first-touch fields kept for backward-compat with existing Reach mapping.</li>
+      <li><b>Forward:</b> POST to Reach, key appended server-side; retry ×3 (0.5s / 2s / 8s); terminal failure → <code>dead_letters</code> + alert. <b>Browser always gets 204</b> — a Reach outage never blocks a visitor's submit.</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3>GET /e/export — read path <span class="tag t-new">New</span></h3>
+    <p>v3.1 had no way out of D1 except a form submit, which structurally excluded every visitor who never converted. Since RB2B exists precisely to identify those people, and since RB2B carries no channel data of its own, that gap made the person-level channel view impossible.</p>
+    <ul>
+      <li><code>GET /e/export?since=&lt;iso&gt;&amp;until=&lt;iso&gt;&amp;cursor=&lt;id&gt;&amp;table=touches|pageviews</code></li>
+      <li>Auth: <code>Authorization: Bearer &lt;EXPORT_KEY&gt;</code>. Never a query-string key — that is the mistake being retired at cutover.</li>
+      <li>Cursor-paginated on the autoincrement id, 1000 rows per page, stable ordering.</li>
+      <li>Reach pulls nightly. <span class="tag t-asm">Assumed</span> Reach can run a scheduled pull; if not, invert to a Worker cron that pushes. Decide with the Reach ETL owner before step 1, not after the schema is live.</li>
+    </ul>
+  </div>
+
+  <h3>Payload contract (v2)</h3>
+<pre><code>visitor_id, visitor_id_client?, <span class="n">rb2b_id?</span>, session_id, email,
+utm_source, utm_medium, utm_campaign, utm_content, utm_term,
+gclid, li_fat_id, fbclid, grsf, gad_source, gad_campaignid, <span class="n">msclkid</span>,
+landing_page, landing_timestamp, landing_referrer, conversion_page,
+<span class="hl">touches: [ { ts, channel, source, medium, campaign,</span>
+<span class="hl">             landing_page, referrer, touch_index, rules_version } … ]</span>,
+<span class="n">first_touch_channel, last_touch_channel, touch_count, session_count,</span>
+<span class="n">first_seen_at, first_seen_before_launch</span>   <span class="k">// cold-start guard, see §6</span>
+form_id, form_age_ms, bot_score, event_id, received_at,
+source: "identity_endpoint"        <span class="k">// tests: "identity_endpoint_test" — tag-and-filter</span>
+…passthrough form fields</code></pre>
+  <p><code>first_touch_channel</code> and <code>last_touch_channel</code> are denormalized onto the event so Reach can build the two headline conversion-rate views without unpacking the array on every query. The array remains authoritative.</p>
+
+  <h3>D1 schema</h3>
+<pre><code><span class="k">CREATE TABLE</span> touches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visitor_id TEXT NOT NULL, session_id TEXT,
+  ts TEXT DEFAULT (datetime('now')),
+  landing_page TEXT,                <span class="k">-- normalized path</span>
+  <span class="n">landing_url_raw TEXT,             -- full URL w/ query, for debugging</span>
+  referrer TEXT,
+  <span class="n">referrer_host TEXT,               -- parsed; handles android-app://</span>
+  params TEXT,                      <span class="k">-- JSON of attribution params present</span>
+  <span class="n">channel TEXT NOT NULL,            -- derived, see classifier</span>
+  <span class="n">source TEXT, medium TEXT, campaign TEXT,</span>
+  <span class="n">touch_index INTEGER,              -- 1 = first touch for this visitor</span>
+  <span class="n">rules_version INTEGER NOT NULL,   -- which classifier wrote this row</span>
+  <span class="n">is_bot INTEGER DEFAULT 0,</span>
+  <span class="n">dedup_key TEXT UNIQUE             -- SHA-256(vid + params + host + 30m bucket)</span>
+);
+<span class="k">CREATE INDEX</span> idx_touches_visitor ON touches(visitor_id, ts);
+<span class="n">CREATE INDEX idx_touches_channel ON touches(channel, ts);</span>
+<span class="k">-- retention: prune rows &gt; 400 days (matches cookie life)</span>
+
+<span class="n">CREATE TABLE pageviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  visitor_id TEXT NOT NULL, session_id TEXT NOT NULL,
+  ts TEXT DEFAULT (datetime('now')),
+  path TEXT NOT NULL,               -- normalized, no query string
+  query TEXT,                       -- raw query preserved separately
+  referrer TEXT,
+  touch_id INTEGER,                 -- FK: the touch that opened this session
+  is_bot INTEGER DEFAULT 0
+);
+CREATE INDEX idx_pv_visitor ON pageviews(visitor_id, ts);
+CREATE INDEX idx_pv_session ON pageviews(session_id, ts);
+-- retention: 90 days raw, then roll up to daily path counts</span>
+
+<span class="k">CREATE TABLE</span> dead_letters (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_id TEXT, payload TEXT NOT NULL, error TEXT,
+  attempts INTEGER, created_at TEXT DEFAULT (datetime('now')),
+  replayed_at TEXT
+);</code></pre>
+  <div class="callout"><p><b>Why <code>rules_version</code> is worth a column.</b> The channel taxonomy will change. When it does, this is the difference between reclassifying precisely the affected rows and guessing at date boundaries. It is the field people skip and then regret.</p>
+  <p><b>Why <code>dedup_key</code> mirrors <code>event_id</code>.</b> Same SHA-256-plus-time-bucket pattern, 30 minutes instead of 60 seconds. Without it, a visitor who refreshes a UTM-tagged landing page three times produces three touches and the multi-source view fills with noise.</p></div>
+</section>
+
+<section id="script">
+  <h2><span class="no">§5</span>Head script v2.2 — five edits, not a rewrite</h2>
+  <ol>
+    <li>Add <code>gad_source</code>, <code>gad_campaignid</code>, <code>msclkid</code> to <code>TRACKING_PARAMS</code>.</li>
+    <li>On load, fire-and-forget <code>POST /e/v</code> with <code>{url, referrer, session_hint, params, rb2b_id}</code>; if the server's visitor_id differs from localStorage, adopt the server ID (write-through) so IDs converge on the durable one. Adopt the server's <code>session_id</code> too — the server now owns session boundaries. One call does identify + touch + pageview.</li>
+    <li>On the form's capture-phase submit, after field population: assemble getFormValues() + email + form fields → <code>navigator.sendBeacon('/e/collect', …)</code> with <code>fetch(…, {keepalive:true})</code> fallback. Native Webflow submission proceeds untouched — email notifications only.</li>
+    <li>Add hidden honeypot <code>website_url</code> + <code>form_age_ms</code>. Keep <code>?debug=pf</code>; extend it to log the outbound payload <b>and the server's returned channel classification</b>, so misclassification is visible in the browser without a D1 query.</li>
+    <li><span class="tag t-new">New</span> <b>Capture <code>rb2b_id</code>.</b> Both scripts run on the same page. Read whatever identifier RB2B sets client-side and pass it through. <span class="tag t-asm">Assumed</span> — see §9; if RB2B exposes nothing readable, fall back to the fuzzy join and accept the mismatch rate.</li>
+  </ol>
+  <div class="callout warn"><p><b>SPA caveat.</b> Webflow is multi-page, so every navigation is a real pageload and <code>/e/v</code> fires correctly. The fit-assessment app is a Vite React SPA: <code>pushState</code> navigations will not fire <code>/e/v</code> and a multi-screen flow will record as one pageview. History-API hooks are required whenever that app is rehomed under <code>popfly.com</code>.</p></div>
+</section>
+
+<section id="metrics">
+  <h2><span class="no">§6</span>What this buys us <span class="tag t-new">New</span></h2>
+  <p>The point of the build, stated in terms Taylor and Maren can hold. Everything here assumes the Reach ETL work in §8 lands; the endpoint produces the data, Reach produces the reporting.</p>
+
+  <h3>Growth</h3>
+  <ul>
+    <li><b>Conversion rate by channel, computed two ways.</b> First-touch and last-touch, side by side. The delta is the finding: channels weak on last-touch but strong on first-touch are discovery engines currently invisible.</li>
+    <li><b>Touches-to-conversion distribution.</b> Highest-leverage number in the set. Decides whether to invest in top-of-funnel volume or in retargeting and nurture. No current read on it at all.</li>
+    <li><b>Time-to-conversion</b>, first touch to submit. A 3-touch / 2-day journey and a 3-touch / 6-week journey imply different playbooks.</li>
+    <li><b>Assisted conversion rate per channel.</b> Share of conversions where a channel appears in the path without being last.</li>
+    <li><b>New vs returning, trustworthy for the first time.</b> The ITP fix means this stops being systematically wrong. <b>Flag for the room:</b> the returning rate will jump at cutover. That jump is measurement correcting, not growth.</li>
+    <li><b>Path depth and dropoff</b> — entry page, pages per session, where people stop before <code>/start/new</code>.</li>
+    <li><b>Creator vs brand funnels, split.</b> Two businesses on one domain. <code>/creators</code> drew 151 views against <code>/</code> at 385 in the RB2B slice, so this is not a rounding error. Persona-split is the only version of these metrics that means anything.</li>
+  </ul>
+
+  <h3>Marketing</h3>
+  <ul>
+    <li><b>Paid vs organic Google, separable.</b> The 224 google.com referrers in the RB2B export decompose via <code>gclid</code>. Everything downstream of that split has been guesswork.</li>
+    <li><b>Campaign-level performance</b> — which campaign, not just which channel.</li>
+    <li><b>Landing page by channel.</b> The vertical pages (<code>/pets</code>, <code>/skiing</code>, <code>/cycling</code>, <code>/adventure-travel</code>, <code>/hiking-and-backpacking</code>) take real traffic with no current way to tell whether they feed <code>/start/new</code> or dead-end.</li>
+    <li><b>Campaign hygiene as a live measurable.</b> The <code>unknown</code> bucket is the data-quality dashboard. Bare landing-page URLs in paid campaigns surface as a rising <code>unknown</code> count instead of silently inflating <code>direct</code>.</li>
+    <li><b>AI referral tracked from day one</b> rather than backfilled never.</li>
+    <li><b>Referral program isolated.</b> <code>grsf</code> separated from generic referral so GrowSurf is credited as its own channel.</li>
+    <li><b>Content-to-conversion path</b> — whether blog traffic precedes conversions.</li>
+  </ul>
+
+  <h3>Sales</h3>
+  <ul>
+    <li><b>Lead context at handoff.</b> Not "came from Google" but: paid search on the 12th, organic return on the 15th, direct on the 19th, viewed <code>/platform/evergreens</code> twice. That is a talk track.</li>
+    <li><b>Intent scoring with real inputs</b> — touch count, session count, page depth, which pages. Rank the queue instead of working it chronologically.</li>
+    <li><b>RB2B-identified accounts with channel history.</b> <span class="tag t-inf">Inferred</span> and contingent on the <code>rb2b_id</code> join landing. Person-level identity from RB2B plus channel history from this log gives sourced accounts that never filled a form.</li>
+    <li><b>Account-level buying-committee signal.</b> Multiple people from one company touching from different channels. The current export already shows repeat companies.</li>
+    <li><b>Re-engagement triggers</b> — known contact returns via a new channel. An alert, not a report.</li>
+  </ul>
+
+  <h3>What this does not give us</h3>
+  <p>Four dependencies, named now so no one builds a dashboard on them by accident.</p>
+  <table class="nw">
+    <tr><th>Gap</th><th>Why</th><th>What would close it</th></tr>
+    <tr><td>Revenue attribution</td><td>Everything above is <em>lead</em> attribution. Channel-to-closed-won needs deal stage and value in the same system as the touch history.</td><td><span class="tag t-asm">Assumed</span> Confirm with Taylor whether Reach holds opportunity data. This is the difference between "which channel makes leads" and "which channel makes money."</td></tr>
+    <tr><td>CAC / ROAS</td><td>No cost data. Ad spend arrives separately or not at all.</td><td>Manual spend import or an ads integration. Until then: efficiency ratios, not economics.</td></tr>
+    <tr><td>Cross-device journeys</td><td>Cookie is per-browser. Phone + laptop = two visitors.</td><td>Nothing cheap. Accept it; note that multi-touch counts and unique-visitor counts both run slightly high.</td></tr>
+    <tr><td>Impression / view-through</td><td>Click-based only.</td><td>Meta/LinkedIn CAPI, already deferred in §10.</td></tr>
+  </table>
+
+  <div class="callout stop">
+    <p><b>Two caveats to put in front of Taylor and Maren before the first report, not after.</b></p>
+    <p><b>1. The first 90 days of multi-touch data will lie.</b> The touch log starts empty at cutover. A visitor who first hit the site in March and converts in August looks like a one-touch visitor because the earlier touches do not exist. <code>touch_index</code> is wrong for every pre-launch visitor. Mitigation is the <code>first_seen_before_launch</code> flag in the payload contract: multi-touch analysis runs only on visitors whose first touch postdates deploy. Without it, the first read on touches-to-conversion is biased low and someone acts on it.</p>
+    <p><b>2. Volume will not support decisive channel comparisons for a while.</b> <code>/start/new</code> drew 19 pageviews among RB2B-identified visitors; scaling by their stated 5–20% resolution rate puts total views in the low hundreds and form fills below that. Comparing conversion rates between two channels at that volume produces confidence intervals wide enough to drive a truck through. These metrics are directionally useful immediately and statistically decisive in months, not weeks.</p>
+    <p><b>The honest framing:</b> this moves us from no attribution to correct attribution. Correct attribution at low volume is still mostly a qualitative instrument for the first quarter. It is the right build regardless, because the alternative is accumulating zero history while waiting for volume.</p>
+  </div>
+</section>
+
+<section id="delivery">
+  <h2><span class="no">§7</span>Delivery plan</h2>
+  <table>
+    <tr><th>#</th><th>Step</th><th>Exit criteria</th></tr>
+    <tr><td>0 ✓</td><td>Footer script deleted</td><td>Verify <code>?debug=pf</code> + test submit shows populated UTMs</td></tr>
+    <tr><td class="no-">0a</td><td><b>Verify D1 write limits</b> under Webflow Cloud's allocation against an estimated pageview ceiling</td><td>Documented headroom, or a sampling rule agreed before schema is written</td></tr>
+    <tr><td class="no-">0b</td><td><b>Inspect RB2B in DevTools</b> for a readable client-side identifier</td><td><code>rb2b_id</code> capture confirmed possible, or fuzzy-join fallback accepted in writing</td></tr>
+    <tr><td class="no-">0c</td><td><b>Agree the read path</b> with the Reach ETL owner: pull vs push</td><td>Direction chosen; <code>/e/export</code> contract signed off</td></tr>
+    <tr><td>1</td><td>Repo scaffold in Popfly org; local wrangler preview at mount path</td><td>/v sets cookie and writes both tables, /collect logs locally</td></tr>
+    <tr><td class="no-">1a</td><td><b>Classifier unit tests</b> against the production referrer list from §3</td><td>All 12 rules covered; <code>android-app://</code> and owned-domain cases pass; gclid-without-UTM classifies as paid_search</td></tr>
+    <tr><td>2</td><td>Cloud app created, GitHub connected, env vars set, staging deploy</td><td>Safari + Chrome: pf_vid persists across restart; /collect → tagged test record in Reach</td></tr>
+    <tr><td>3</td><td>Production deploy, unreferenced</td><td>curl smoke tests pass on popfly.com/e/*</td></tr>
+    <tr><td>4</td><td>Ship script v2.2 → <b>dual-write</b> (endpoint + n8n live), 3–5 days</td><td>Endpoint volume ≈ n8n volume; Reach dedupes on <code>event_id</code></td></tr>
+    <tr><td>5</td><td>Parity check <b>(form events only)</b></td><td>Delta &lt; ~2% or explained. <b>Note:</b> n8n never carried touches or pageviews, so there is nothing to compare those against. They need step 5a instead.</td></tr>
+    <tr><td class="no-">5a</td><td><b>Manual journey test.</b> Hit a paid ad URL, return via Google search, return direct.</td><td>Exactly three touch rows: <code>paid_search</code>, <code>organic_search</code>, <code>direct</code>. One visitor_id. <code>touch_index</code> 1/2/3. Pageview count matches actual navigations. Second browser tab does <b>not</b> create a second session.</td></tr>
+    <tr><td>6</td><td><b>Cutover:</b> new Reach key → env var; n8n webhook + workflow removed</td><td>Leads flow; dead_letters empty</td></tr>
+    <tr><td>7</td><td><b>Old key retired</b> from WEBHOOK_SOURCE (Paul + COO)</td><td>The actual security fix — the old key is public</td></tr>
+    <tr><td>8</td><td>Monitor 2 weeks</td><td>Daily dead_letter count steady at zero; weekly volume matches form fills; <code>unknown</code> channel share stable and explained</td></tr>
+  </table>
+  <p><b>Later, same pattern:</b> the fit-assessment app (Vite → Next wrap) mounts on popfly.com, posts to /e/collect, inherits <code>pf_vid</code> automatically, and adds history-API hooks for SPA pageviews; its repo transfers from personal to the Popfly org at wrap time.</p>
+  <div class="callout warn"><p><b>Effort, revised:</b> endpoint + D1 + tests ~1 day · <b>classifier + host lists + tests ~0.5 day</b> · <b>read path ~0.5 day</b> · script v2.2 ~2–3 hrs · Cloud setup ~1–2 hrs · dual-write window 3–5 elapsed days. Roughly <b>2 days of build</b>, up from 1. Long pole is still key-rotation coordination, with step 0c now a close second since the read-path shape is hard to retrofit. Running cost <b>$0</b> — within Business plan limits, and the image remediation bought back ~14 GB/mo of bandwidth headroom.</p></div>
+</section>
+
+<section id="decisions">
+  <h2><span class="no">§8</span>Decisions</h2>
+  <div class="decisions">
+    <div class="dec"><div class="q">Attribution model</div><div class="a"><span class="ok">✓</span>All touches — server-side D1 log, <b>classified at write time</b>. Reach derives any model from the <code>touches</code> array without owning the taxonomy.</div></div>
+    <div class="dec"><div class="q">Pageviews</div><div class="a"><span class="re">↻</span><b>Reopened, now in scope.</b> Separate <code>pageviews</code> table. <code>touches</code> stays an attribution log — the v3.1 principle survives, the exclusion does not.</div></div>
+    <div class="dec"><div class="q">Channel taxonomy</div><div class="a"><span class="ok">✓</span>12 buckets, ordered classifier, <code>rules_version</code> stamped. Raw params always retained.</div></div>
+    <div class="dec"><div class="q">Read path</div><div class="a"><span class="re">↻</span><b>Reopened.</b> <code>GET /e/export</code>, bearer auth. Pull vs push confirmed with Reach at step 0c.</div></div>
+    <div class="dec"><div class="q">Session ownership</div><div class="a"><span class="ok">✓</span>Server-derived, 30-minute inactivity window. Client sessionStorage is a hint only.</div></div>
+    <div class="dec"><div class="q">Cookie scope</div><div class="a"><span class="ok">✓</span><code>Domain=.popfly.com</code> so app and guide subdomains can read it later. Was host-only by omission in v3.1.</div></div>
+    <div class="dec"><div class="q">Deduplication</div><div class="a"><span class="ok">✓</span>Events: <code>event_id</code>, fallback email + window. Touches: <code>dedup_key</code>, 30-min bucket. <b>Communicate to Reach ETL owner before dual-write.</b></div></div>
+    <div class="dec"><div class="q">Bot handling</div><div class="a"><span class="ok">✓</span>Flag, never drop — on <code>/e/v</code> as well as <code>/e/collect</code>. <code>is_bot</code> on both tables; consumers filter.</div></div>
+    <div class="dec"><div class="q">Key rotation</div><div class="a"><span class="ok">✓</span>Paul co-owns with COO; scheduled for cutover day</div></div>
+    <div class="dec"><div class="q">/e mount path</div><div class="a"><span class="ok">✓</span>Confirmed free on the site</div></div>
+    <div class="dec"><div class="q">Repo home</div><div class="a"><span class="ok">✓</span>Popfly GitHub org; access sorted at kickoff — no personal accounts</div></div>
+    <div class="dec"><div class="q">Test records</div><div class="a"><span class="ok">✓</span>Tag-and-filter via <code>source: "identity_endpoint_test"</code>; Reach ETL excludes</div></div>
+  </div>
+</section>
+
+<section id="verify">
+  <h2><span class="no">§9</span>Verify before build</h2>
+  <p>Everything below is <span class="tag t-asm">Assumed</span> and blocks a design choice, not just a line of code. Steps 0a–0c in §7 exist to close these.</p>
+  <table>
+    <tr><th>Question</th><th>Why it blocks</th><th>Owner</th></tr>
+    <tr><td>D1 write limits under Webflow Cloud's plan allocation</td><td>Pageview volume is an order of magnitude above form events. If writes are capped low, the answer is sampling or a rollup, and that changes the schema.</td><td>Paul</td></tr>
+    <tr><td>Does RB2B expose a readable client-side ID?</td><td>Determines whether the RB2B join is a hard key or a fuzzy match on timestamp + captured URL + city. Fuzzy will mismatch, and this is now the only path to channel data for identified non-converters.</td><td>Paul (DevTools, ~10 min)</td></tr>
+    <tr><td>Can Reach run a scheduled pull, or must we push?</td><td>Inverts the read path. Hard to retrofit once the schema is live.</td><td>Paul + Reach ETL owner</td></tr>
+    <tr><td>Does Reach hold opportunity stage and value?</td><td>Decides whether §6 can promise revenue attribution or only lead attribution. Worth settling before anyone repeats the stronger claim.</td><td>Paul + Taylor</td></tr>
+    <tr><td>Reach ingestion contract unchanged since the April spec?</td><td>Dual-write fails silently if the normalizer changed.</td><td>Paul + Reach ETL owner</td></tr>
+  </table>
+</section>
+
+<section id="scope">
+  <h2><span class="no">§10</span>Out of scope</h2>
+  <p>Meta/LinkedIn CAPI &amp; Stape (deferred; the endpoint can forward server-side later) · Meta Pixel / Fullstory consent track · consent banner enforcement · fit-assessment rehoming (follows this pattern later) · cross-device identity resolution · ad spend import.</p>
+  <p><b>Moved out of "out of scope" in v3.2:</b> RB2B. It stays a direct webhook to Reach for lead delivery, but the <code>rb2b_id</code> join is now part of this build, because §3 established that RB2B will never carry channel data of its own.</p>
+</section>
+
+<footer>
+  <span>POPFLY IDENTITY SERVER · SPEC v3.2</span>
+  <span>PREPARED BY PAUL B · JUL 31 2026</span>
+</footer>
+
+</div>
+</body>
+</html>

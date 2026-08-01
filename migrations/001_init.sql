@@ -1,0 +1,15 @@
+-- 001_init.sql — touches, pageviews, dead_letters.
+-- STUB — DO NOT WRITE THE SCHEMA until Build Plan Phase 0a closes (D1 write
+-- limits vs pageview volume): a sampling/rollup decision changes this file.
+-- Authoritative DDL lives in spec §4 "D1 schema" (docs/spec-v3.2.html).
+--
+-- touches      — attribution log (NOT pageviews). Derived channel/source/medium/
+--                campaign, touch_index, rules_version, is_bot, UNIQUE dedup_key
+--                (SHA-256(vid + params + host + 30m bucket)). Raw landing_url_raw,
+--                referrer, referrer_host, params JSON retained unmodified.
+--                Indexes: (visitor_id, ts), (channel, ts). Retention: 400 days.
+-- pageviews    — every pageload. path (normalized), query (raw, separate),
+--                referrer, touch_id FK to session-opening touch, is_bot.
+--                Indexes: (visitor_id, ts), (session_id, ts).
+--                Retention: 90 days raw → daily path-count rollup.
+-- dead_letters — event_id, payload, error, attempts, created_at, replayed_at.
