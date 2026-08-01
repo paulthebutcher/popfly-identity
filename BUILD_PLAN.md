@@ -64,7 +64,9 @@ Endpoint and n8n both live; Reach dedupes on `event_id` (0e confirmed first).
 
 ## Phase 6 — Cutover
 
-New Reach key in the env var; Webflow→n8n webhook and n8n form workflow removed.
+New Reach key in the env var; `LAUNCH_TS` set; Webflow→n8n webhook disconnected and the n8n form workflow **deactivated (not deleted)** — it stays as the rollback path until Phase 8 closes clean, then gets deleted.
+
+**Before deactivating: inventory the n8n workflow's nodes for side-effects** beyond the Reach forward (Slack pings, sheet appends, tags in other tools). Anything found gets rehomed — Reach is usually the right new home, since it now receives a richer event than n8n ever did. Note: this retires the *form workflow*; decommissioning the n8n instance entirely is a separate decision that needs an instance-wide workflow inventory first.
 - **Exit:** leads flow end-to-end; `dead_letters` empty.
 
 ## Phase 7 — Old key retired
