@@ -33,6 +33,7 @@ New fields on every `/e/collect` event (full contract in the [README](../README.
 | `geo_city`, `geo_country` | string? | Coarse Cloudflare geo — used for the RB2B join (§3) |
 | `source` | string | `"identity_endpoint"` — routing discriminator |
 | *(flat first-touch fields)* | | `utm_*`, `gclid`, `landing_page`, etc. kept for backward compat with the existing mapping — prefer the array |
+| *(passthrough form fields)* | | Every named form element arrives under its Webflow `name` attribute. **The persona/business-type field is load-bearing** (creator-vs-brand splits, qualified-lead gating in reporting) — its exact field name is captured during the Phase 4 pre-paste check; map it explicitly, don't guess. `website_url` (honeypot, expected empty) and `form_age_ms` also ride along. |
 
 ### 1.3 Bot policy: the endpoint flags, Reach decides
 The endpoint **never drops** a submission (spec §8). `bot_score` (0–1, from honeypot + form_age_ms < 2s + disposable email domain) and `is_bot` (UA-based, on touches/pageviews) arrive as data. Reach ETL must choose and document a threshold (suggested: exclude `bot_score ≥ 0.6` from lead routing but retain rows; filter `is_bot = 1` from all traffic metrics). No real lead should ever be silently eaten — that guarantee now lives on Reach's side.
