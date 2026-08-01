@@ -7,5 +7,6 @@ REACH_WEBHOOK_URL=
 REACH_WEBHOOK_KEY=
 # Secret. Dead-letter alerting.
 ALERT_WEBHOOK_URL=
-# Secret. Bearer token for GET /e/export.
-EXPORT_KEY=
+# Secret. Bearer token authenticating the scheduled trigger of POST /e/push.
+# Also stored as a GitHub Actions secret for the nightly cron workflow.
+PUSH_KEY=
