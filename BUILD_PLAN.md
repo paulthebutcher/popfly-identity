@@ -23,7 +23,9 @@ Also close with the Reach ETL owner before Phase 4: the **dedup contract** (`eve
 
 ---
 
-## Phase 1 — Scaffold, schema, classifier
+## Phase 1 — Scaffold, schema, classifier ✅ (built + verified locally Aug 1 2026)
+
+**Verified on local Workers runtime + D1:** cookie mint/persist and rolling reissue; server-side session reuse across hits; classification correct for a paid→internal→organic journey (`paid_search` → `internal` suppressed → `organic_search`, `touch_index` 1/2, `rules_version` stamped, `geo_city` populated); refresh replay deduped by `dedup_key`; `/e/collect` 204/422/403 + dead-letter after 3 retries with payload preserved; `/e/push` 401 without bearer, holds the high-water mark when the sink rejects. 36 classifier tests green; `tsc` and `next build` clean. Remaining from this phase: the 0f cron test (needs a staging deploy — moved to Phase 2).
 
 **Step 1: repo + local preview.**
 - Init the Next.js App Router project (route handlers only) with the Webflow Cloud toolchain; repo lives in the Popfly GitHub org (access sorted at kickoff — no personal accounts). ⚠️ This directory already contains doc/stub files; scaffolders expect an empty dir — init in a temp dir and merge, or force-init, replacing each stub with its implementation.

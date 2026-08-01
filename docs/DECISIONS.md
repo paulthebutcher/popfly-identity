@@ -29,12 +29,20 @@ Three tiers: **Settled** (spec §8, do not re-litigate), **Proposed** (defaults 
 | README audience | Mixed — plain-English "what this buys us" for Taylor/Maren/Reach ETL owner first, then technical. |
 | Repo hosting (interim) | Pushed to `github.com/paulthebutcher/popfly-identity` (personal) on Aug 1 2026. ⚠️ Deviates from the settled "Popfly org, no personal accounts" decision — transfer to the Popfly org at kickoff, before the Webflow Cloud app is connected (Phase 2), so the GitHub connection never has to be re-pointed. |
 
-## Proposed defaults (not yet ratified — veto before Phase 1)
+## Ratified at Phase 1 build (Aug 1 2026)
+
+| Decision | Notes |
+|---|---|
+| npm + Vitest | In use; 36 classifier tests green. |
+| Route layout: `app/v`, `app/collect`, … (NOT the spec's `app/e/v`) | Webflow Cloud requires `basePath` = mount path (`/e`); the spec's layout would have doubled the prefix to `/e/e/v`. Public URLs unchanged: `popfly.com/e/v` etc. |
+| `/e/v` returns `channel` alongside the IDs | Powers the extended `?debug=pf` (spec §5 item 4) — misclassification visible in the browser without a D1 query. |
+| `touches.rb2b_id` column | The touch row itself carries the RB2B UUID when present, not just the form payload. |
+| Reach-side obligations tracked in [REACH.md](REACH.md) | Living doc; update whenever the build adds a Reach-facing behavior. |
+
+## Proposed defaults (not yet ratified)
 
 | Default | Rationale | Alternative |
 |---|---|---|
-| npm as package manager | Webflow Cloud's documented default toolchain | pnpm works if preferred; decide before `package.json` exists |
-| Vitest for classifier tests | De-facto standard for Workers/Next projects; fast, no config friction | Jest |
 | Spec preserved as `docs/spec-v3.2.html` verbatim | Repo-local source of truth; future spec versions added alongside, never overwritten | — |
 | `geo_city` + `geo_country` columns on `pageviews` (and touches) from `request.cf`, added Aug 1 2026 | The RB2B join is fuzzy (no UUID outbound) and City is one of RB2B's three matchable fields; Cloudflare provides coarse geo free on every request. Coarse city-level only — no IP stored. | Skip geo and match on (URL, timestamp) alone — weaker disambiguation for multi-visitor pages |
 

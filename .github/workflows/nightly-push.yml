@@ -1,0 +1,30 @@
+# Nightly trigger for POST /e/push (batch push to Reach + retention prune).
+# Exists because Webflow Cloud documents no native cron support (gate 0f —
+# if triggers.crons turns out to work at Phase 1, delete this file).
+# PUSH_KEY and PUSH_URL are repo Actions secrets; PUSH_URL is the full
+# endpoint (staging first, production after cutover).
+# GitHub cron is best-effort; the push is high-water-mark idempotent, so a
+# missed run self-heals on the next.
+name: nightly-push
+
+on:
+  schedule:
+    - cron: "17 7 * * *" # 07:17 UTC daily — off the top of the hour, when GH cron is least congested
+  workflow_dispatch: {} # manual runs for testing
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger /e/push
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" -X POST "$PUSH_URL" \
+            -H "Authorization: Bearer $PUSH_KEY")
+          cat response.json
+          if [ "$status" -ne 200 ]; then
+            echo "push failed with HTTP $status" >&2
+            exit 1
+          fi
+        env:
+          PUSH_URL: ${{ secrets.PUSH_URL }}
+          PUSH_KEY: ${{ secrets.PUSH_KEY }}

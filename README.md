@@ -2,7 +2,7 @@
 
 First-party visitor identity, attribution, and event delivery for popfly.com. Runs as a Webflow Cloud app mounted at `popfly.com/e`, so everything is same-origin — no third-party endpoints for ad blockers to match, no ITP storage caps to fight, no client-exposed API keys.
 
-**Status: pre-build.** The repo is a documented scaffold — every `.ts` and `.sql` file is a comment-only stub describing what goes there. No implementation exists yet. Phase 0 verification gates as of Aug 1 2026: **0a, 0b, 0c, 0e all closed**; 0d deferred as future state. Key outcomes: no D1 write cap (1 GB storage is the constraint — retention prune is mandatory); read path is push (`/e/push`, GitHub Actions cron); Reach contract is ours to define; the RB2B join is **fuzzy** (client-side `_reb2buid` is readable and captured, but RB2B's outbound exports carry no UUID) — hence `geo_city`/`geo_country` columns from `request.cf`. Only 0f (cron test) remains, folded into Phase 1. **Nothing blocks Phase 1.** See [BUILD_PLAN.md](BUILD_PLAN.md) Phase 0.
+**Status: Phase 1 built and verified locally (Aug 1 2026).** All four endpoints implemented and smoke-tested on the Workers runtime with local D1: cookie identity, server-side sessions, classification (36 unit tests green), touch dedup, internal suppression, dead-lettering, push auth + high-water marks. Next: Phase 2 — create the Webflow Cloud app, connect GitHub, set env vars, staging deploy (plus the 0f cron test). Reach-side obligations live in [docs/REACH.md](docs/REACH.md). Phase 0 outcomes: no D1 write cap (1 GB storage is the constraint — retention prune is mandatory, runs in `/e/push`); read path is push (GitHub Actions nightly cron); Reach contract is ours to define; RB2B join is fuzzy (client `_reb2buid` captured; their exports carry no UUID) — hence `geo_city`/`geo_country` from `request.cf`.
 
 **Source of truth:** [docs/spec-v3.2.html](docs/spec-v3.2.html) (Build Spec v3.2, Jul 31 2026). Where this README and the spec disagree, the spec wins. Decisions and their status live in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -91,35 +91,51 @@ popfly-identity/
 ├── docs/
 │   ├── spec-v3.2.html            ← authoritative build spec
 │   ├── DECISIONS.md              ← decision log (settled, proposed, open)
-│   └── rb2b-devtools-checklist.md ← Phase 0b runbook
-├── app/e/
-│   ├── v/route.ts             ← POST /e/v          (stub)
-│   ├── collect/route.ts       ← POST /e/collect    (stub)
-│   ├── push/route.ts          ← POST /e/push       (stub)
-│   └── healthz/route.ts       ← GET  /e/healthz    (stub)
+│   ├── REACH.md                  ← living Reach-side obligations doc
+│   └── rb2b-devtools-checklist.md ← Phase 0b runbook (completed)
+├── app/                       ← route handlers; basePath /e = the mount path,
+│   ├── v/route.ts             ←   so app/v serves publicly as popfly.com/e/v
+│   ├── collect/route.ts       ← POST /e/collect
+│   ├── push/route.ts          ← POST /e/push
+│   ├── healthz/route.ts       ← GET  /e/healthz
+│   └── layout.tsx             ← minimal root layout (build requirement only)
 ├── lib/
-│   ├── validate.ts            ← schema + bot checks           (stub)
-│   ├── classify.ts            ← channel classifier + RULES_VERSION (stub)
-│   ├── session.ts             ← server-side session derivation (stub)
-│   ├── reach.ts               ← forwarder with retry           (stub)
-│   └── db.ts                  ← D1 access via getCloudflareContext (stub)
+│   ├── classify.ts            ← channel classifier + RULES_VERSION
+│   ├── session.ts             ← server-side session derivation
+│   ├── validate.ts            ← schema + bot checks + origin gate + rate limit
+│   ├── reach.ts               ← forwarder with retry, dead-letter, alert
+│   └── db.ts                  ← Cloudflare context, Env type, sha256
 ├── migrations/
-│   └── 001_init.sql           ← touches, pageviews, dead_letters (stub)
+│   └── 001_init.sql           ← touches, pageviews, pageview_rollups, dead_letters, push_state
 ├── tests/
-│   └── classify.test.ts       ← classifier tests vs production referrer list (stub)
+│   └── classify.test.ts       ← 36 tests vs the production referrer list
+├── .github/workflows/
+│   └── nightly-push.yml       ← nightly trigger for /e/push (0f fallback)
+├── next.config.ts             ← basePath/assetPrefix /e
+├── open-next.config.ts · wrangler.jsonc · webflow.json
 ├── .dev.vars.example          ← env var names for local dev (no values)
 └── .gitignore
 ```
 
-Not yet present, generated at Build Plan step 1 by the framework/Webflow Cloud tooling: `package.json`, `next.config.*`, `tsconfig.json`, `wrangler.jsonc`, `webflow.json`, `open-next.config.*`. **Note:** scaffolding tools usually want an empty directory — step 1 will need to init in a temp dir and merge, or force-init around these stubs. Flagged in BUILD_PLAN step 1.
+### Local development
 
-### Local development & deploy (to be verified at step 1)
+```bash
+npm install
+npm test                                  # classifier suite (vitest)
+npm run typecheck
+npx opennextjs-cloudflare build           # build the worker bundle
+npm run migrate:local                     # apply migrations to local D1
+npx wrangler dev                          # serve on :8787 (uses .dev.vars)
+```
 
-The intended flow, per Webflow Cloud's docs at time of writing — exact commands to be confirmed when the toolchain is installed:
+Copy [.dev.vars.example](.dev.vars.example) to `.dev.vars` (gitignored) with dev values first. Routes serve under the base path locally too: `http://localhost:8787/e/healthz`.
 
-1. Webflow Cloud project created in the Webflow dashboard, connected to this repo on GitHub, mount path `/e`, D1 binding + env vars configured there.
-2. Local preview via the Webflow CLI / wrangler dev server; secrets in a local `.dev.vars` (gitignored).
-3. Deploys are pushes to the connected branch — GitHub auto-deploy, no manual publish.
+### Deploy
+
+1. Webflow Cloud project created in the Webflow dashboard, connected to this repo on GitHub, mount path `/e`; the D1 binding in [wrangler.jsonc](wrangler.jsonc) is provisioned by Webflow at deploy, and migrations apply automatically.
+2. Env vars set in the Webflow Cloud dashboard (see table above).
+3. Deploys are pushes to the connected branch — GitHub auto-deploy (or `webflow cloud deploy`).
+4. Set `PUSH_URL` + `PUSH_KEY` as GitHub Actions secrets so [nightly-push.yml](.github/workflows/nightly-push.yml) can trigger `/e/push`.
 
 ### Related systems (not in this repo)
 
