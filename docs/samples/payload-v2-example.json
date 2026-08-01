@@ -1,0 +1,58 @@
+{
+  "email": "harness-test@example.com",
+  "name": "Harness Tester",
+  "website_url": "",
+  "form_age_ms": 36134,
+  "form_id": "dev-harness",
+  "visitor_id": "v_a10d7a60-06ef-4c70-bcde-02dfde8853f7",
+  "session_id": "sess_66543f6c-4fa3-4185-9c79-215747b4aa2b",
+  "source": "identity_endpoint_test",
+  "conversion_page": "/e/dev-harness",
+  "touches": [
+    {
+      "ts": "2026-08-01 18:03:47",
+      "channel": "paid_search",
+      "source": "google",
+      "medium": "cpc",
+      "campaign": null,
+      "landing_page": "/pets",
+      "referrer": "https://www.google.com/",
+      "touch_index": 1,
+      "rules_version": 1
+    },
+    {
+      "ts": "2026-08-01 18:03:59",
+      "channel": "organic_search",
+      "source": "duckduckgo",
+      "medium": "organic",
+      "campaign": null,
+      "landing_page": "/creators",
+      "referrer": "https://duckduckgo.com/",
+      "touch_index": 2,
+      "rules_version": 1
+    },
+    {
+      "ts": "2026-08-01 18:04:04",
+      "channel": "organic_social",
+      "source": "linkedin",
+      "medium": "social",
+      "campaign": null,
+      "landing_page": "/blog",
+      "referrer": "android-app://com.linkedin.android",
+      "touch_index": 3,
+      "rules_version": 1
+    }
+  ],
+  "first_touch_channel": "paid_search",
+  "last_touch_channel": "organic_social",
+  "touch_count": 3,
+  "session_count": 1,
+  "first_seen_at": "2026-08-01 18:03:47",
+  "first_seen_before_launch": false,
+  "bot_score": 0,
+  "is_bot_ua": false,
+  "geo_city": "West Valley City",
+  "geo_country": "US",
+  "event_id": "432f85b6fb0dcec556c4d5bcec486d4a63d640daa3bacc0b0eee590c80125133",
+  "received_at": "2026-08-01T18:04:10.325Z"
+}

@@ -10,3 +10,6 @@ ALERT_WEBHOOK_URL=
 # Secret. Bearer token authenticating the scheduled trigger of POST /e/push.
 # Also stored as a GitHub Actions secret for the nightly cron workflow.
 PUSH_KEY=
+
+# Set to 1 to enable GET /e/dev-harness (local/staging only — never in prod).
+DEV_HARNESS=

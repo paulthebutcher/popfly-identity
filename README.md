@@ -117,6 +117,10 @@ popfly-identity/
 └── .gitignore
 ```
 
+### Dev harness
+
+`GET /e/dev-harness` serves a same-origin test page mimicking head script v2.2 — journey buttons for every channel class and a form that posts to `/e/collect` (with a bot-simulation toggle). Gated behind `DEV_HARNESS=1` (set in `.dev.vars` locally; never set it in the Webflow Cloud dashboard, so it 404s in production). Same origin means cookies, session reuse, and the origin gate behave exactly as they will on popfly.com.
+
 ### Local development
 
 ```bash

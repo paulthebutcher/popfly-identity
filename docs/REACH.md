@@ -12,6 +12,8 @@ Update this file whenever the build adds or changes a Reach-facing behavior. Eac
 During the 3–5 day dual-write window, every form submit arrives **twice**: once via n8n (old path) and once via `/e/collect` (new path). Reach must dedupe. The new path sends `event_id` = SHA-256(email + session_id + 60-second bucket); the n8n path doesn't carry it, so practical dedupe is: match on email + timestamp proximity (±2 min), keep the endpoint record (it's strictly richer), or simply tolerate doubles for the window and dedupe in reporting. **Decide the mechanism before the window opens.**
 
 ### 1.2 Map payload v2
+
+**A real generated example lives at [samples/payload-v2-example.json](samples/payload-v2-example.json)** — produced by the dev harness through the actual endpoint (multi-touch journey: paid_search → organic_search → organic_social), so it is byte-accurate to what Reach will receive. Review it async; the shape is ours to change if anything is awkward on the ETL side.
 New fields on every `/e/collect` event (full contract in the [README](../README.md) and spec §4):
 
 | Field | Type | Notes |
