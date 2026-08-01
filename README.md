@@ -81,6 +81,10 @@ Set in the Webflow Cloud dashboard, runtime-injected, referenced only inside rou
 | `REACH_WEBHOOK_KEY` | **yes** | Rotated key — never the current public one |
 | `ALERT_WEBHOOK_URL` | **yes** | Dead-letter alerting |
 | `PUSH_KEY` | **yes** | Bearer token authenticating the scheduled trigger of `POST /e/push` (also set as a GitHub Actions secret) |
+| `LAUNCH_TS` | no | ISO timestamp of cutover — **must be set at Phase 6** or `first_seen_before_launch` is silently always false and the 90-day cold-start guard never fires |
+| `DEV_HARNESS` | no | `1` enables `GET /e/dev-harness`. Local/staging only — **never set in production** |
+
+⚠️ `ALERT_WEBHOOK_URL` needs a decided destination (Slack webhook? email bridge?) before Phase 2 — silent dead-lettering is the failure mode this build exists to prevent.
 
 ### Repo layout
 
@@ -143,7 +147,7 @@ Copy [.dev.vars.example](.dev.vars.example) to `.dev.vars` (gitignored) with dev
 
 ### Related systems (not in this repo)
 
-- **Head script v2.2** — lives in the Webflow site's custom code. Five edits over v2.1, spec §5.
+- **Head script v2.2** — authored and versioned at [docs/webflow-head-script-v2.2.js](docs/webflow-head-script-v2.2.js); deployed by pasting into Webflow Site Settings → Custom Code → Head (Phase 4, only after the endpoint is live). Before pasting, verify the `/start/new` form's hidden-field names match `getFormValues()`.
 - **Reach** — receives form events in real time (`/e/collect` forward) and touch/pageview history in nightly batches (`/e/push`, `source: "identity_endpoint_history"` envelope to the same webhook URL); it cannot run scheduled pulls. The payload contract is ours to define — Reach owns all ETL and the reporting in spec §6; coordinate the ETL mapping before dual-write (Phase 4).
 - **RB2B** — stays a direct webhook to Reach for lead delivery. Its client-side `_reb2buid` UUID is captured as `rb2b_id` (free, future-proofing), but RB2B's outbound exports carry no UUID, so the working join is **fuzzy**: RB2B's (RecentPageUrls, LastSeenAt, City) matched against our (path, ts, geo_city) in Reach ETL.
 - **GrowSurf, GTM** — unchanged.

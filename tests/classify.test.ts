@@ -116,6 +116,20 @@ describe("AI surfaces vs Google search disambiguation", () => {
   });
 });
 
+describe("fbclid fallback (rule 14)", () => {
+  it("bare fbclid, no referrer (FB in-app browser) → organic_social, not unknown", () => {
+    const c = from(null, { fbclid: "IwAR123" });
+    expect(c).toMatchObject({ channel: "organic_social", source: "facebook", rule: 14 });
+  });
+  it("fbclid with facebook referrer still classifies via referrer (rule 8)", () => {
+    const c = from("https://l.facebook.com/", { fbclid: "IwAR123" });
+    expect(c).toMatchObject({ channel: "organic_social", source: "facebook", rule: 8 });
+  });
+  it("fbclid does NOT outrank real paid click IDs", () => {
+    expect(from(null, { fbclid: "x", gclid: "y" }).rule).toBe(1);
+  });
+});
+
 describe("rules 11-13: referral / direct / unknown stay distinct", () => {
   it("unmatched external referrer → referral (rule 11)", () => {
     const c = from("https://someblog.example.com/post");

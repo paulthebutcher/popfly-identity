@@ -26,9 +26,11 @@ export async function POST(req: Request): Promise<Response> {
 
   const summary: Record<string, unknown> = { started_at: new Date().toISOString() };
   try {
-    summary.touches = await pushTable(env, db, "touches");
-    summary.pageviews = await pushTable(env, db, "pageviews");
-    summary.prune = await prune(db);
+    const touches = await pushTable(env, db, "touches");
+    const pageviews = await pushTable(env, db, "pageviews");
+    summary.touches = touches;
+    summary.pageviews = pageviews;
+    summary.prune = await prune(db, touches.high_water_mark, pageviews.high_water_mark);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await alert(env, `Nightly push failed: ${message}`);
@@ -51,6 +53,10 @@ async function pushTable(env: Env, db: D1Database, table: "touches" | "pageviews
         .all<Record<string, unknown>>()
     ).results;
     if (rows.length === 0) break;
+
+    // Marks advance per batch, so a mid-run timeout keeps progress and the
+    // next run resumes — this is also why a huge backlog exceeding the
+    // request timeout self-heals across nights.
 
     const newMark = rows[rows.length - 1].id as number;
     const url = `${env.REACH_WEBHOOK_URL}${env.REACH_WEBHOOK_URL.includes("?") ? "&" : "?"}key=${encodeURIComponent(env.REACH_WEBHOOK_KEY)}`;
@@ -79,27 +85,33 @@ async function pushTable(env: Env, db: D1Database, table: "touches" | "pageviews
   return { rows_sent: sent, high_water_mark: mark };
 }
 
-async function prune(db: D1Database) {
+async function prune(db: D1Database, touchesHwm: number, pageviewsHwm: number) {
   // Roll pageviews older than the retention window into daily path counts,
   // then delete raw rows. Required, not hygiene: SQLite storage on the
   // Business plan is capped at 1 GB (0a outcome).
+  // The `id <= high_water_mark` guard makes it structurally impossible to
+  // delete a row Reach has never received, even if pushes had been failing
+  // for the entire retention window.
   await db
     .prepare(
       `INSERT INTO pageview_rollups (day, path, views, bot_views)
        SELECT date(ts), path, COUNT(*), SUM(is_bot)
          FROM pageviews
-        WHERE ts < datetime('now', '-${PAGEVIEW_RETENTION_DAYS} days')
+        WHERE ts < datetime('now', '-${PAGEVIEW_RETENTION_DAYS} days') AND id <= ?1
         GROUP BY date(ts), path
        ON CONFLICT(day, path) DO UPDATE SET
          views = views + excluded.views,
          bot_views = bot_views + excluded.bot_views`
     )
+    .bind(pageviewsHwm)
     .run();
   const pv = await db
-    .prepare(`DELETE FROM pageviews WHERE ts < datetime('now', '-${PAGEVIEW_RETENTION_DAYS} days')`)
+    .prepare(`DELETE FROM pageviews WHERE ts < datetime('now', '-${PAGEVIEW_RETENTION_DAYS} days') AND id <= ?1`)
+    .bind(pageviewsHwm)
     .run();
   const t = await db
-    .prepare(`DELETE FROM touches WHERE ts < datetime('now', '-${TOUCH_RETENTION_DAYS} days')`)
+    .prepare(`DELETE FROM touches WHERE ts < datetime('now', '-${TOUCH_RETENTION_DAYS} days') AND id <= ?1`)
+    .bind(touchesHwm)
     .run();
   return { pageviews_pruned: pv.meta.changes, touches_pruned: t.meta.changes };
 }

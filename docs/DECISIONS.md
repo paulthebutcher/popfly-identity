@@ -38,6 +38,8 @@ Three tiers: **Settled** (spec §8, do not re-litigate), **Proposed** (defaults 
 | `/e/v` returns `channel` alongside the IDs | Powers the extended `?debug=pf` (spec §5 item 4) — misclassification visible in the browser without a D1 query. |
 | `touches.rb2b_id` column | The touch row itself carries the RB2B UUID when present, not just the form payload. |
 | Reach-side obligations tracked in [REACH.md](REACH.md) | Living doc; update whenever the build adds a Reach-facing behavior. |
+| Pre-live review fixes (Aug 1 2026) | (1) Touch history = first touch + most recent 49, `touch_count` = true total (may exceed array length); (2) `/e/v` rate-limited 60/min/IP against D1-storage floods; (3) prune guarded by `id <= high_water_mark` — can never delete rows Reach hasn't received; (4) classifier rule 14: bare `fbclid` with no referrer → `organic_social`/facebook (FB in-app browser strips referrers; keeps `unknown` clean). RULES_VERSION stays 1 — no production rows exist yet. |
+| Head script v2.2 versioned in-repo | [webflow-head-script-v2.2.js](webflow-head-script-v2.2.js) — deployed by paste into Webflow head custom code at Phase 4, never improvised in the Webflow editor. |
 
 ## Proposed defaults (not yet ratified)
 

@@ -22,7 +22,7 @@ New fields on every `/e/collect` event (full contract in the [README](../README.
 | `visitor_id_client` | string? | Present only when a pre-migration localStorage ID diverges — use to stitch old history |
 | `rb2b_id` | string? | RB2B's `_reb2buid` UUID. Store it even though RB2B doesn't export it today — future-proofing |
 | `session_id` | string | Server-derived, 30-min inactivity window |
-| `touches` | array | Ordered, ≤50, each: `{ts, channel, source, medium, campaign, landing_page, referrer, touch_index, rules_version}` — **authoritative** |
+| `touches` | array | Ordered, ≤50 (the first touch + the most recent 49), each: `{ts, channel, source, medium, campaign, landing_page, referrer, touch_index, rules_version}` — **authoritative**. `touch_count` reports the true total and may exceed the array length; the full log always arrives via the nightly batches (§2). |
 | `first_touch_channel`, `last_touch_channel` | string | Denormalized convenience copies of the array's endpoints |
 | `touch_count`, `session_count` | int | |
 | `first_seen_at` | ISO string | |

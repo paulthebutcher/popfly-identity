@@ -52,25 +52,39 @@ export async function POST(req: Request): Promise<Response> {
   const receivedAt = new Date().toISOString();
   const eventId = await sha256Hex(`${email}|${sessionId ?? ""}|${Math.floor(Date.now() / 60_000)}`);
 
-  // --- Attach touch history (step 6): ordered, capped, both IDs.
+  // --- Attach touch history (step 6): the FIRST touch plus the most recent
+  // 49, so first_touch and last_touch are both truly what they claim even
+  // for visitors with more than 50 touches. touch_count reports the real
+  // total, which may exceed the array length.
   let touches: TouchRow[] = [];
+  let touchTotal = 0;
   let firstSeenAt: string | null = null;
   let sessionCount = 0;
   try {
     const vids = visitorIdClient ? [visitorId, visitorIdClient] : [visitorId];
     const placeholders = vids.map((_, i) => `?${i + 1}`).join(", ");
-    touches = (
+    const recent = (
       await db
-        .prepare(`SELECT * FROM touches WHERE visitor_id IN (${placeholders}) ORDER BY id ASC LIMIT ${TOUCH_HISTORY_CAP}`)
+        .prepare(`SELECT * FROM touches WHERE visitor_id IN (${placeholders}) ORDER BY id DESC LIMIT ${TOUCH_HISTORY_CAP - 1}`)
         .bind(...vids)
         .all<TouchRow>()
-    ).results;
-    const stats = await db
-      .prepare(`SELECT MIN(ts) AS first_seen, COUNT(DISTINCT session_id) AS sessions FROM pageviews WHERE visitor_id IN (${placeholders})`)
+    ).results.reverse();
+    const firstTouch = await db
+      .prepare(`SELECT * FROM touches WHERE visitor_id IN (${placeholders}) ORDER BY id ASC LIMIT 1`)
       .bind(...vids)
-      .first<{ first_seen: string | null; sessions: number }>();
+      .first<TouchRow>();
+    touches = firstTouch && !recent.some((r) => r.id === firstTouch.id) ? [firstTouch, ...recent] : recent;
+    const stats = await db
+      .prepare(
+        `SELECT MIN(ts) AS first_seen, COUNT(DISTINCT session_id) AS sessions,
+                (SELECT COUNT(*) FROM touches WHERE visitor_id IN (${placeholders})) AS touch_total
+           FROM pageviews WHERE visitor_id IN (${placeholders})`
+      )
+      .bind(...vids)
+      .first<{ first_seen: string | null; sessions: number; touch_total: number }>();
     firstSeenAt = stats?.first_seen ?? null;
     sessionCount = stats?.sessions ?? 0;
+    touchTotal = stats?.touch_total ?? touches.length;
   } catch {
     // History enrichment is best-effort; the lead still ships.
   }
@@ -102,7 +116,7 @@ export async function POST(req: Request): Promise<Response> {
     touches: touchHistory,
     first_touch_channel: first?.channel ?? null,
     last_touch_channel: last?.channel ?? null,
-    touch_count: touchHistory.length,
+    touch_count: touchTotal || touchHistory.length,
     session_count: sessionCount,
     first_seen_at: firstSeenAt,
     first_seen_before_launch: firstSeenBeforeLaunch,

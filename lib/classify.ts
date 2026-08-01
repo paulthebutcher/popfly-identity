@@ -218,6 +218,13 @@ export function classify(input: ClassifyInput): Classification {
   if (host) {
     return { channel: "referral", source: host, medium: "referral", campaign, rule: 11 };
   }
+  // 11b. Bare fbclid with no referrer: Facebook's in-app browser strips the
+  // referrer, and fbclid rides on ALL FB outbound clicks (organic included —
+  // which is why it is deliberately NOT a paid-click rule up top). Without
+  // this, FB in-app traffic inflates `unknown` and degrades the hygiene alarm.
+  if (p["fbclid"]) {
+    return { channel: "organic_social", source: "facebook", medium: "social", campaign, rule: 14 };
+  }
   // 12. No referrer, no params — real direct behavior.
   if (Object.keys(p).length === 0 && !input.referrer) {
     return { channel: "direct", source: null, medium: null, campaign: null, rule: 12 };

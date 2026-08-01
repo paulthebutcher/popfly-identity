@@ -40,7 +40,7 @@ Test against the *production* referrer list from spec §3, not synthetic data.
 
 ## Phase 2 — Staging
 
-Webflow Cloud app created, GitHub connected, env vars set (`REACH_WEBHOOK_URL`, `REACH_WEBHOOK_KEY` *(rotated key — never the current public one)*, `ALERT_WEBHOOK_URL`, `PUSH_KEY`), staging deploy. Ask Webflow support to confirm the no-write-cap reading of the SQLite limits (0a residual).
+Webflow Cloud app created, GitHub connected, env vars set (`REACH_WEBHOOK_URL`, `REACH_WEBHOOK_KEY` *(rotated key — never the current public one)*, `ALERT_WEBHOOK_URL`, `PUSH_KEY`), staging deploy. Ask Webflow support to confirm the no-write-cap reading of the SQLite limits (0a residual). **Prerequisite: decide the `ALERT_WEBHOOK_URL` destination** (Slack incoming webhook is the obvious candidate) — dead-letter alerts with nowhere to land defeat the monitoring story. **At Phase 6, also set `LAUNCH_TS`** to the cutover timestamp or the cold-start guard never fires.
 - **Exit:** Safari **and** Chrome: `pf_vid` persists across a full browser restart (the ITP fix, verified — this is the headline claim); `/e/collect` produces a tagged test record in Reach (`identity_endpoint_test`); a manually triggered `/e/push` run delivers a batch and prunes correctly against seeded data.
 
 ## Phase 3 — Production deploy, unreferenced
@@ -50,7 +50,7 @@ Deploy to popfly.com/e with nothing pointing at it yet.
 
 ## Phase 4 — Script v2.2 + dual-write (3–5 elapsed days)
 
-Ship the five head-script edits (spec §5): new params (`gad_source`, `gad_campaignid`, `msclkid`); fire-and-forget `/e/v` with server-ID adoption; sendBeacon → `/e/collect` with keepalive fallback (native Webflow submission untouched — email notifications only); honeypot + `form_age_ms` + extended `?debug=pf` showing the server's returned channel; `rb2b_id` capture per 0b's outcome.
+Script v2.2 is authored and versioned at [docs/webflow-head-script-v2.2.js](docs/webflow-head-script-v2.2.js) (all five spec §5 edits: new params, `/e/v` with server-ID adoption, sendBeacon → `/e/collect` with keepalive fallback and native submission untouched, injected honeypot + `form_age_ms` + extended `?debug=pf`, `_reb2buid` capture). Deploy = paste into Webflow Site Settings → Custom Code → Head. **Pre-paste check:** hidden-field names on `/start/new` match `getFormValues()` keys, and a `?debug=pf` pass on staging shows populated fields + server channel.
 Endpoint and n8n both live; Reach dedupes on `event_id` (0e confirmed first).
 - **Exit:** endpoint volume ≈ n8n volume over the window.
 

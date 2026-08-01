@@ -4,7 +4,7 @@
 import { classify, referrerHost, RULES_VERSION } from "@/lib/classify";
 import { cloudflare, sha256Hex } from "@/lib/db";
 import { deriveSession } from "@/lib/session";
-import { isAllowedOrigin, isBotUA, sanitizeFields } from "@/lib/validate";
+import { isAllowedOrigin, isBotUA, rateLimited, sanitizeFields } from "@/lib/validate";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +31,12 @@ export async function POST(req: Request): Promise<Response> {
 
   if (!isAllowedOrigin(req)) {
     return new Response(null, { status: 403 });
+  }
+  // Generous per-IP ceiling (fast browsing is ~1 pageload/2s); the point is
+  // blocking write-floods against the 1 GB D1 storage cap, not real visitors.
+  const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+  if (rateLimited(ip, 60, 60_000)) {
+    return new Response(null, { status: 429 });
   }
 
   const isBot = isBotUA(req.headers.get("user-agent")) ? 1 : 0; // flag, never drop
