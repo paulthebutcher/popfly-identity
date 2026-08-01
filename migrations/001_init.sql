@@ -1,7 +1,12 @@
 -- 001_init.sql — touches, pageviews, dead_letters.
--- STUB — DO NOT WRITE THE SCHEMA until Build Plan Phase 0a closes (D1 write
--- limits vs pageview volume): a sampling/rollup decision changes this file.
--- Authoritative DDL lives in spec §4 "D1 schema" (docs/spec-v3.2.html).
+-- STUB — no implementation until Build Plan Phase 1. 0a closed Aug 1 2026:
+-- no daily write cap, 1 GB storage is the constraint, no sampling needed.
+-- Authoritative DDL lives in spec §4 "D1 schema" (docs/spec-v3.2.html),
+-- PLUS one addition over the spec (0b outcome, Aug 1 2026):
+--   geo_city TEXT, geo_country TEXT on BOTH touches and pageviews,
+--   populated from request.cf in /e/v. Coarse city only, never IP.
+--   Required by the fuzzy RB2B join: RB2B's outbound side carries no UUID,
+--   so matching is (RecentPageUrls, LastSeenAt, City) vs (path, ts, geo_city).
 --
 -- touches      — attribution log (NOT pageviews). Derived channel/source/medium/
 --                campaign, touch_index, rules_version, is_bot, UNIQUE dedup_key

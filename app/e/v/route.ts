@@ -6,6 +6,12 @@
 //   rb2b_id = RB2B's stable visitor UUID (0b closed Aug 1 2026): script reads
 //   localStorage "_reb2buid", falling back to the first-party "_reb2buid"
 //   cookie (Secure, not HttpOnly). Optional — absent if RB2B hasn't loaded.
+//   NOTE: RB2B's outbound exports carry no UUID, so this is future-proofing;
+//   the working RB2B join is fuzzy and leans on geo_city (below).
+//
+// Also capture per row (0b outcome): geo_city + geo_country from request.cf
+// (Workers geo — coarse city only, never store IP) onto both the pageviews
+// and touches writes. This is what makes the fuzzy RB2B join workable.
 //
 // Pipeline:
 //   1. Bot gate — UA vs known-crawler list. FLAG (is_bot on both rows), never drop.
