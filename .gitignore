@@ -14,3 +14,7 @@ dist/
 # OS / editor
 .DS_Store
 *.log
+
+# TypeScript incremental build info
+*.tsbuildinfo
+next-env.d.ts
