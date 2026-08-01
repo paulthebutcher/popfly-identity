@@ -3,6 +3,9 @@
 // Contract: spec §4, card "POST /e/v".
 //
 // Body from head script v2.2: { url, referrer, session_hint, params, rb2b_id? }
+//   rb2b_id = RB2B's stable visitor UUID (0b closed Aug 1 2026): script reads
+//   localStorage "_reb2buid", falling back to the first-party "_reb2buid"
+//   cookie (Secure, not HttpOnly). Optional — absent if RB2B hasn't loaded.
 //
 // Pipeline:
 //   1. Bot gate — UA vs known-crawler list. FLAG (is_bot on both rows), never drop.

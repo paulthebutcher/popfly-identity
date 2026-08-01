@@ -2,7 +2,7 @@
 
 First-party visitor identity, attribution, and event delivery for popfly.com. Runs as a Webflow Cloud app mounted at `popfly.com/e`, so everything is same-origin — no third-party endpoints for ad blockers to match, no ITP storage caps to fight, no client-exposed API keys.
 
-**Status: pre-build.** The repo is a documented scaffold — every `.ts` and `.sql` file is a comment-only stub describing what goes there. No implementation exists yet. Phase 0 verification gates: 0a (D1 limits) closed Aug 1 2026 — storage, not write rate, is the constraint; 0c closed as **push** (Reach can't pull); 0b, 0e, and the 0c batch contract remain open. See [BUILD_PLAN.md](BUILD_PLAN.md) Phase 0.
+**Status: pre-build.** The repo is a documented scaffold — every `.ts` and `.sql` file is a comment-only stub describing what goes there. No implementation exists yet. Phase 0 verification gates as of Aug 1 2026: 0a (D1 limits) closed — storage, not write rate, is the constraint; 0b closed client-side — RB2B's `_reb2buid` is a readable hard key; 0c closed as **push** (Reach can't pull). Open: 0e, the 0c batch contract, and confirming `_reb2buid` appears on RB2B's outbound side. See [BUILD_PLAN.md](BUILD_PLAN.md) Phase 0.
 
 **Source of truth:** [docs/spec-v3.2.html](docs/spec-v3.2.html) (Build Spec v3.2, Jul 31 2026). Where this README and the spec disagree, the spec wins. Decisions and their status live in [docs/DECISIONS.md](docs/DECISIONS.md).
 
