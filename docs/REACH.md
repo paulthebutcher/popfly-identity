@@ -80,6 +80,10 @@ RB2B's outbound side (webhook + daily CSV, verified Aug 1 2026 across 283 rows) 
 
 ---
 
+## 3b. Interim third source: `fit_assessment` (until that app consolidates)
+
+The fit-assessment app currently delivers leads via its own route with `source: "fit_assessment"` — no `event_id`, no visitor/session IDs, no touch history, no bot flags. Until it's consolidated onto `/e/collect` (planned at its launch; see BUILD_PLAN "After this build"), Reach must: route it as a lead source, dedupe against `identity_endpoint` leads by email only, and expect no journey data on these records. After consolidation these arrive as normal payload-v2 events with `form_id: "fit-assessment"` and this section becomes obsolete.
+
 ## 4. Cutover day (Phases 6–7) — REQUIRED, coordinated
 
 1. **Issue a new webhook key** for the identity endpoint (goes into the `REACH_WEBHOOK_KEY` env var — never into client code).
