@@ -2,7 +2,7 @@
 
 First-party visitor identity, attribution, and event delivery for popfly.com. Runs as a Webflow Cloud app mounted at `popfly.com/e`, so everything is same-origin — no third-party endpoints for ad blockers to match, no ITP storage caps to fight, no client-exposed API keys.
 
-**Status: Phase 1 built and verified locally (Aug 1 2026).** All four endpoints implemented and smoke-tested on the Workers runtime with local D1: cookie identity, server-side sessions, classification (36 unit tests green), touch dedup, internal suppression, dead-lettering, push auth + high-water marks. Next: Phase 2 — create the Webflow Cloud app, connect GitHub, set env vars, staging deploy (plus the 0f cron test). Reach-side obligations live in [docs/REACH.md](docs/REACH.md). Phase 0 outcomes: no D1 write cap (1 GB storage is the constraint — retention prune is mandatory, runs in `/e/push`); read path is push (GitHub Actions nightly cron); Reach contract is ours to define; RB2B join is fuzzy (client `_reb2buid` captured; their exports carry no UUID) — hence `geo_city`/`geo_country` from `request.cf`.
+**Status: Phase 1 built and verified locally (Aug 1 2026).** All four endpoints are implemented and smoke-tested on the Workers runtime with local D1: cookie identity, server-side sessions, classification, touch dedup, internal suppression, dead-lettering + automatic nightly replay, push auth + high-water marks, and transactional retention pruning. The automated suite has 43 tests. Next: Phase 2 — create the Webflow Cloud app, connect GitHub, set env vars, staging deploy (plus the 0f cron test). Reach-side obligations live in [docs/REACH.md](docs/REACH.md). Phase 0 outcomes: no D1 write cap (1 GB storage is the constraint — retention prune is mandatory, runs in `/e/push`); read path is push (GitHub Actions nightly cron); Reach contract is ours to define; RB2B join is fuzzy (client `_reb2buid` captured; their exports carry no UUID) — hence `geo_city`/`geo_country` from `request.cf`.
 
 **Source of truth:** [docs/spec-v3.2.html](docs/spec-v3.2.html) (Build Spec v3.2, Jul 31 2026). Where this README and the spec disagree, the spec wins. Decisions and their status live in [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -51,20 +51,22 @@ www.popfly.com  (Webflow site)
 |---|---|---|
 | `/e/v` | POST | Identify visitor (mint/refresh `pf_vid` HttpOnly cookie, `Domain=.popfly.com`, rolling 400-day expiry), derive session server-side (30-min inactivity window), classify the touch, write `pageviews` row always and `touches` row when it's a real attribution event. Returns `{ visitor_id, session_id }`. |
 | `/e/collect` | POST | Form-event ingest: origin gate, schema validation, bot *flagging* (never dropping), identity merge, touch-history attachment, forward to Reach with retry + dead-letter. Always returns 204 to the browser. |
-| `/e/push` | POST | Bearer-authenticated (`PUSH_KEY`) scheduled maintenance: batch-push `touches`/`pageviews` since the last high-water mark to Reach (idempotent), then prune retention (90-day pageviews after rollup, 400-day touches). Triggered nightly by a GitHub Actions cron in this repo — Webflow Cloud documents no native cron support (re-verify at Phase 1). Never a query-string key. |
+| `/e/push` | POST | Bearer-authenticated (`PUSH_KEY`) scheduled maintenance: replay unrecovered lead dead letters, batch-push `touches`/`pageviews` since the last high-water mark to Reach (idempotent), then transactionally prune retention (90-day pageviews after rollup, 400-day touches). Triggered nightly by a GitHub Actions cron in this repo — Webflow Cloud documents no native cron support (re-verify at Phase 1). Never a query-string key. |
 | `/e/healthz` | GET | Uptime check. |
 
 ### Data (D1)
 
-Three tables — full schema in spec §4, stub in [migrations/001_init.sql](migrations/001_init.sql):
+Five tables — full implemented schema in [migrations/001_init.sql](migrations/001_init.sql):
 
 - **`touches`** — attribution log only (not a pageview log). Channel, source, medium, campaign derived at write time by the ordered 13-rule classifier; raw params and referrer always stored unmodified; `rules_version` stamped on every row for precise reclassification; `dedup_key` (30-min bucket) stops refresh spam. Retention 400 days, matching cookie life.
 - **`pageviews`** — every pageload, written on the same `/e/v` call (zero extra HTTP requests). Retention 90 days raw, then rollup.
-- **`dead_letters`** — terminally failed Reach forwards, for replay.
+- **`dead_letters`** — terminally failed Reach forwards; unrecovered rows replay automatically during `/e/push` and are stamped with `replayed_at` after Reach accepts them.
+- **`pageview_rollups`** — daily path totals retained after raw pageviews age out.
+- **`push_state`** — high-water marks for idempotent history delivery.
 
 ### Channel classifier
 
-Ordered, first match wins, lives in `lib/classify.ts` (stub). The two rules people get wrong, called out here because they're the point:
+Ordered, first match wins, implemented in `lib/classify.ts`. The two rules people get wrong, called out here because they're the point:
 
 1. **Click IDs before UTMs.** `gclid`/`gad_source` must be checked before UTM fallback, or every auto-tagged Google Ads click classifies as `direct` and the conclusion is "ads don't work."
 2. **`unknown` ≠ `direct`.** `direct` is real behavior (no referrer, no params). `unknown` is a data gap. A rising `unknown` count is the campaign-hygiene alarm; collapsing the two hides exactly the bare-landing-URL failure already seen in paid campaigns.
@@ -108,11 +110,14 @@ popfly-identity/
 │   ├── session.ts             ← server-side session derivation
 │   ├── validate.ts            ← schema + bot checks + origin gate + rate limit
 │   ├── reach.ts               ← forwarder with retry, dead-letter, alert
+│   ├── maintenance.ts         ← transactional retention rollup + prune
 │   └── db.ts                  ← Cloudflare context, Env type, sha256
 ├── migrations/
 │   └── 001_init.sql           ← touches, pageviews, pageview_rollups, dead_letters, push_state
 ├── tests/
-│   └── classify.test.ts       ← 36 tests vs the production referrer list
+│   ├── classify.test.ts       ← 39 tests vs the production referrer list
+│   ├── reach.test.ts          ← delivery, dead-letter, and replay regressions
+│   └── push.test.ts           ← transactional retention regression
 ├── .github/workflows/
 │   └── nightly-push.yml       ← nightly trigger for /e/push (0f fallback)
 ├── next.config.ts             ← basePath/assetPrefix /e
@@ -151,4 +156,4 @@ Copy [.dev.vars.example](.dev.vars.example) to `.dev.vars` (gitignored) with dev
 - **Reach** — receives form events in real time (`/e/collect` forward) and touch/pageview history in nightly batches (`/e/push`, `source: "identity_endpoint_history"` envelope to the same webhook URL); it cannot run scheduled pulls. The payload contract is ours to define — Reach owns all ETL and the reporting in spec §6; coordinate the ETL mapping before dual-write (Phase 4).
 - **RB2B** — stays a direct webhook to Reach for lead delivery. Its client-side `_reb2buid` UUID is captured as `rb2b_id` (free, future-proofing), but RB2B's outbound exports carry no UUID, so the working join is **fuzzy**: RB2B's (RecentPageUrls, LastSeenAt, City) matched against our (path, ts, geo_city) in Reach ETL.
 - **GrowSurf, GTM** — unchanged.
-- **n8n form workflow** — deleted at cutover.
+- **n8n form workflow** — deactivated at cutover as the rollback path; deleted only after Phase 8 closes cleanly.

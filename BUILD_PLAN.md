@@ -25,10 +25,10 @@ Also close with the Reach ETL owner before Phase 4: the **dedup contract** (`eve
 
 ## Phase 1 — Scaffold, schema, classifier ✅ (built + verified locally Aug 1 2026)
 
-**Verified on local Workers runtime + D1:** cookie mint/persist and rolling reissue; server-side session reuse across hits; classification correct for a paid→internal→organic journey (`paid_search` → `internal` suppressed → `organic_search`, `touch_index` 1/2, `rules_version` stamped, `geo_city` populated); refresh replay deduped by `dedup_key`; `/e/collect` 204/422/403 + dead-letter after 3 retries with payload preserved; `/e/push` 401 without bearer, holds the high-water mark when the sink rejects. 36 classifier tests green; `tsc` and `next build` clean. Remaining from this phase: the 0f cron test (needs a staging deploy — moved to Phase 2).
+**Verified on local Workers runtime + D1:** cookie mint/persist and rolling reissue; server-side session reuse across hits; classification correct for a paid→internal→organic journey (`paid_search` → `internal` suppressed → `organic_search`, `touch_index` 1/2, `rules_version` stamped, `geo_city` populated); refresh replay deduped by `dedup_key`; `/e/collect` 204/422/403 + dead-letter after bounded retries with payload preserved; `/e/push` 401 without bearer, replays dead letters, holds high-water marks when the sink rejects, and rolls up + prunes atomically. 43 automated tests green; `tsc` and `next build` clean. Remaining from this phase: the 0f cron test (needs a staging deploy — moved to Phase 2).
 
 **Step 1: repo + local preview.**
-- Init the Next.js App Router project (route handlers only) with the Webflow Cloud toolchain; repo lives in the Popfly GitHub org (access sorted at kickoff — no personal accounts). ⚠️ This directory already contains doc/stub files; scaffolders expect an empty dir — init in a temp dir and merge, or force-init, replacing each stub with its implementation.
+- Next.js App Router project (route handlers only) with the Webflow Cloud toolchain; repo lives in the Popfly GitHub org (access sorted at kickoff — no personal accounts).
 - Write `migrations/001_init.sql` per spec §4 (`touches`, `pageviews`, `dead_letters`, indexes, retention notes) — 0a closed with no volume-driven change; retention enforcement moves to `/e/push`. One addition over spec §4: `geo_city`/`geo_country` TEXT columns on both event tables, populated from `request.cf` in `/e/v` (coarse city only, no IP) — required by the fuzzy RB2B join (0b outcome).
 - Implement `/e/v` (bot gate → cookie → server-side session → pageview write → classify → conditional touch write) and `/e/collect` (gate → validate → bot-flag → identity merge → enrich → attach history → forward with retry → always 204). Implement `/e/push` (high-water-mark batch push per the 0c-signed contract + retention prune) once the Reach batch contract is signed. `/e/healthz`.
 - **Scheduler check:** try `triggers.crons` in `wrangler.jsonc` on a test deploy — if Webflow Cloud honors it (undocumented, assume not), drop the external trigger; otherwise add a nightly GitHub Actions workflow that curls `POST /e/push` with the `PUSH_KEY` bearer (key stored as a GitHub Actions secret).
@@ -72,7 +72,9 @@ New Reach key in the env var; `LAUNCH_TS` set; Webflow→n8n webhook disconnecte
 ## Phase 7 — Old key retired
 
 Old key removed from WEBHOOK_SOURCE (Paul + COO, scheduled for cutover day). **This is the actual security fix** — the old key is public; everything before this is preparation.
-- **Exit:** old key rejected by Reach.
+
+⚠️ **Cross-dependency: the fit-assessment app (live since early August) authenticates to Reach with its own `REACH_API_KEY` env var.** If that's the old key, retiring it silently kills fit-assessment lead delivery. Before retiring: check which key fit-assessment uses; either rotate its env var to a fresh key at the same time, or (better) consolidate it onto `/e/collect` first, which deletes its Reach route and key entirely.
+- **Exit:** old key rejected by Reach; fit-assessment leads confirmed still flowing (or already consolidated).
 
 ## Phase 8 — Monitor, 2 weeks
 
@@ -92,8 +94,8 @@ Old key removed from WEBHOOK_SOURCE (Paul + COO, scheduled for cutover day). **T
 | Undocumented D1 write throttling surfaces despite no documented cap | 0a residual: confirm with Webflow support at Phase 2; watch dual-write window; rollup/sampling remains the designed fallback |
 | 1 GB SQLite storage cap reached | Retention prune is mandatory inside `/e/push`; alert if a run's prune fails; storage trend checked during Phase 8 monitoring |
 | Reach batch contract (0c second half) slips | `/e/push` payload shape blocked on ETL owner sign-off — chase alongside 0e in the same conversation |
-| GitHub Actions cron misses runs (best-effort scheduling) | Push is high-water-mark idempotent, so a late/missed run self-heals on the next; alert if no successful push in 48h |
+| GitHub Actions cron misses runs (best-effort scheduling) | Push is high-water-mark idempotent, so a late/missed run self-heals on the next; GitHub reports failed workflow runs |
 | First 90 days of multi-touch data misread by stakeholders | `first_seen_before_launch` flag in payload; caveat delivered to Taylor + Maren **before** the first report (spec §6) |
 | Returning-visitor rate jumps at cutover and reads as growth | Pre-brief: it's measurement correcting, not growth |
 | Key rotation slips | Paul + COO co-own; scheduled for cutover day, not "after" |
-| Reach outage during submits | By design: browser always gets 204; dead_letters + replay |
+| Reach outage during submits | By design: browser always gets 204; terminal failures enter `dead_letters` and `/e/push` retries the oldest unrecovered rows nightly |

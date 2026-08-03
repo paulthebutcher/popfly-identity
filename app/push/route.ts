@@ -6,14 +6,13 @@
 // a partial failure re-sends rows next run and Reach upserts on (table, id)
 // (docs/REACH.md §2).
 import { cloudflare, type Env } from "@/lib/db";
-import { alert } from "@/lib/reach";
+import { prune } from "@/lib/maintenance";
+import { alert, replayDeadLetters } from "@/lib/reach";
 
 export const dynamic = "force-dynamic";
 
 const BATCH_SIZE = 500;
 const MAX_BATCHES_PER_RUN = 40; // stay well inside the request timeout
-const PAGEVIEW_RETENTION_DAYS = 90;
-const TOUCH_RETENTION_DAYS = 400;
 
 export async function POST(req: Request): Promise<Response> {
   const { env } = cloudflare();
@@ -26,6 +25,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const summary: Record<string, unknown> = { started_at: new Date().toISOString() };
   try {
+    summary.dead_letters = await replayDeadLetters(env, db);
     const touches = await pushTable(env, db, "touches");
     const pageviews = await pushTable(env, db, "pageviews");
     summary.touches = touches;
@@ -83,35 +83,4 @@ async function pushTable(env: Env, db: D1Database, table: "touches" | "pageviews
       .run();
   }
   return { rows_sent: sent, high_water_mark: mark };
-}
-
-async function prune(db: D1Database, touchesHwm: number, pageviewsHwm: number) {
-  // Roll pageviews older than the retention window into daily path counts,
-  // then delete raw rows. Required, not hygiene: SQLite storage on the
-  // Business plan is capped at 1 GB (0a outcome).
-  // The `id <= high_water_mark` guard makes it structurally impossible to
-  // delete a row Reach has never received, even if pushes had been failing
-  // for the entire retention window.
-  await db
-    .prepare(
-      `INSERT INTO pageview_rollups (day, path, views, bot_views)
-       SELECT date(ts), path, COUNT(*), SUM(is_bot)
-         FROM pageviews
-        WHERE ts < datetime('now', '-${PAGEVIEW_RETENTION_DAYS} days') AND id <= ?1
-        GROUP BY date(ts), path
-       ON CONFLICT(day, path) DO UPDATE SET
-         views = views + excluded.views,
-         bot_views = bot_views + excluded.bot_views`
-    )
-    .bind(pageviewsHwm)
-    .run();
-  const pv = await db
-    .prepare(`DELETE FROM pageviews WHERE ts < datetime('now', '-${PAGEVIEW_RETENTION_DAYS} days') AND id <= ?1`)
-    .bind(pageviewsHwm)
-    .run();
-  const t = await db
-    .prepare(`DELETE FROM touches WHERE ts < datetime('now', '-${TOUCH_RETENTION_DAYS} days') AND id <= ?1`)
-    .bind(touchesHwm)
-    .run();
-  return { pageviews_pruned: pv.meta.changes, touches_pruned: t.meta.changes };
 }

@@ -33,7 +33,7 @@ Three tiers: **Settled** (spec §8, do not re-litigate), **Proposed** (defaults 
 
 | Decision | Notes |
 |---|---|
-| npm + Vitest | In use; 36 classifier tests green. |
+| npm + Vitest | In use; 43 automated tests green (39 classifier, 4 delivery/retention). |
 | Route layout: `app/v`, `app/collect`, … (NOT the spec's `app/e/v`) | Webflow Cloud requires `basePath` = mount path (`/e`); the spec's layout would have doubled the prefix to `/e/e/v`. Public URLs unchanged: `popfly.com/e/v` etc. |
 | `/e/v` returns `channel` alongside the IDs | Powers the extended `?debug=pf` (spec §5 item 4) — misclassification visible in the browser without a D1 query. |
 | `touches.rb2b_id` column | The touch row itself carries the RB2B UUID when present, not just the form payload. |
